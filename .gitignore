@@ -11,11 +11,12 @@ dist/
 .env.local
 .env.*.local
 
-# Editor / OS
+# Editor / OS / local tooling
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+.mcp.json
 
 # Logs
 *.log

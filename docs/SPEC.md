@@ -93,11 +93,11 @@ Why:
 
 Cloudflare's current documentation lists 100,000 Worker requests per day
 on the Free plan. Static asset requests are free and unlimited.
-citeturn0search0turn0search10
+
 
 Official documentation:
 
-urlCloudflare Workershttps://developers.cloudflare.com/workers/
+[Cloudflare Workers](https://developers.cloudflare.com/workers/)
 
 ------------------------------------------------------------------------
 
@@ -131,7 +131,7 @@ Cloudflare Workers Free currently provides:
 ```
 
 External network waiting does not count toward the Worker CPU-time
-limit. citeturn0search0
+limit. 
 
 This is suitable because Jessica's backend is primarily an API
 orchestrator. Heavy AI computation happens outside the Worker.
@@ -156,11 +156,11 @@ Free plan currently includes:
 ```
 
 The Free plan also includes PostgreSQL, authentication, storage, and
-other backend services. citeturn0search2turn0search8
+other backend services. 
 
 Official:
 
-urlSupabasehttps://supabase.com/
+[Supabase](https://supabase.com/)
 
 ------------------------------------------------------------------------
 
@@ -278,14 +278,14 @@ Why:
 -   Free API tier is available
 
 Google describes Gemini 2.5 Flash as a strong price-performance model
-intended for low-latency and high-volume workloads. citeturn1search3
+intended for low-latency and high-volume workloads. 
 
 Google's current pricing documentation lists free-tier input and output
-pricing for supported Gemini API models. citeturn1search2
+pricing for supported Gemini API models. 
 
 Official:
 
-urlGoogle AI for Developershttps://ai.google.dev/
+[Google AI for Developers](https://ai.google.dev/)
 
 ------------------------------------------------------------------------
 
@@ -324,7 +324,7 @@ whisper-large-v3-turbo
 Groq provides cloud-hosted Whisper speech recognition.
 
 The model supports multilingual transcription and is designed for fast
-inference. citeturn1search1turn1search10
+inference. 
 
 Groq's current free-tier rate limits list:
 
@@ -335,7 +335,7 @@ Groq's current free-tier rate limits list:
 28,800 audio seconds/day
 ```
 
-for `whisper-large-v3-turbo`. citeturn1search0
+for `whisper-large-v3-turbo`. 
 
 For a 2-minute maximum recording:
 
@@ -348,14 +348,14 @@ This is a useful starting capacity for a free project.
 
 Official:
 
-urlGroqhttps://groq.com/
+[Groq](https://groq.com/)
 
 ------------------------------------------------------------------------
 
 # 12. Why Groq for Speech
 
 Using Gemini for audio is technically possible. Gemini supports audio
-input and long audio context. citeturn1search8turn1search12
+input and long audio context. 
 
 For Jessica, a dedicated speech-to-text service is cleaner:
 
@@ -392,7 +392,7 @@ Gemini 2.5 Flash
 Transcript + Evaluation
 ```
 
-Gemini supports audio input. citeturn1search8
+Gemini supports audio input. 
 
 This reduces the number of API calls.
 
@@ -428,7 +428,7 @@ gemini-embedding-001
 or the current supported Gemini embedding model.
 
 Google's pricing documentation lists Gemini Embeddings as available on
-the free and paid Gemini API tiers. citeturn1search4
+the free and paid Gemini API tiers. 
 
 The embedding is used for:
 
@@ -573,7 +573,7 @@ Gemini supports search grounding.
 Current Gemini pricing documentation shows search-grounding quotas
 differ by model and tier. For Gemini 2.5 Flash, Google's developer forum
 documentation currently describes a free allowance of 1,500 grounded
-prompts per day. citeturn1search13
+prompts per day. 
 
 Treat this quota as a resource.
 
@@ -897,7 +897,7 @@ Groq Whisper
 A 1-2 minute recording should remain well below the free upload limits.
 
 Groq's current free-tier audio upload limit is 25 MB.
-citeturn1search1
+
 
 ------------------------------------------------------------------------
 
@@ -941,7 +941,7 @@ Supabase Storage
 ```
 
 Supabase Free currently includes 1 GB storage and 50 MB maximum file
-upload size. citeturn0search2
+upload size. 
 
 ------------------------------------------------------------------------
 
@@ -1638,7 +1638,7 @@ Cloudflare Workers Free currently provides:
 ```
 
 and static assets are free and unlimited under the documented static
-asset model. citeturn0search0turn0search10
+asset model. 
 
 Supabase Free currently provides:
 
@@ -1649,7 +1649,6 @@ Supabase Free currently provides:
 500,000 Edge Function invocations
 ```
 
-citeturn0search2turn0search8
 
 For a student project, portfolio project, prototype, or small early user
 base, this is a strong starting architecture.
@@ -1722,7 +1721,7 @@ Before public launch, review each provider's current data-use terms.
 
 Google's current Gemini pricing documentation marks free-tier requests
 as "Used to improve our products: Yes", while paid-tier requests are
-marked "No". citeturn1search2
+marked "No". 
 
 This matters because Jessica processes user speech and transcripts.
 
