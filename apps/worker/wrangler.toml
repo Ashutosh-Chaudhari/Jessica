@@ -7,11 +7,22 @@ main = "src/index.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Every deployed version otherwise gets its own public URL, running the same
+# secrets against the same database. That keeps superseded versions - including
+# ones with since-fixed bugs - permanently reachable by anyone who learns the
+# URL. There is no review workflow here that needs them.
+preview_urls = false
+
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"
-# Only /api/* invokes the Worker; everything else is served as a static asset.
-run_worker_first = ["/api/*"]
+# The Worker sees the API and every page navigation, so it can force HTTPS and
+# attach security headers to the HTML. Hashed assets are excluded with negative
+# patterns: they are the bulk of the requests, they are immutable and cached,
+# and leaving them on the asset path keeps them free and unmetered rather than
+# spending a Worker invocation each. That also means a bot hammering static
+# files cannot exhaust the daily Worker quota and take the site down.
+run_worker_first = ["/*", "!/assets/*", "!/theme-init.js"]
 # Client-side routes like /dashboard have no file of their own - serve the SPA.
 not_found_handling = "single-page-application"
 

@@ -3,11 +3,35 @@ import { cors } from "hono/cors";
 import type { App } from "./types.ts";
 import { requireUser } from "./middleware/auth.ts";
 import { withContext } from "./middleware/context.ts";
+import { securityHeaders } from "./middleware/security.ts";
 import { challenges } from "./routes/challenges.ts";
 import { user } from "./routes/user.ts";
 import { fail } from "./utils/respond.ts";
 
 const app = new Hono<App>();
+
+/**
+ * Plain HTTP reaches workers.dev, and an Authorization header sent that way
+ * travels in cleartext. HSTS only protects a browser that has already been
+ * here over HTTPS, so the first visit needs an actual redirect.
+ *
+ * 308 rather than 301: it preserves the method and body, so a POST that
+ * arrives over HTTP is retried correctly instead of silently becoming a GET.
+ */
+app.use("*", async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.protocol === "http:") {
+    url.protocol = "https:";
+    return c.redirect(url.toString(), 308);
+  }
+  return next();
+});
+
+// Applies to everything this Worker returns. Static assets are covered by
+// apps/web/public/_headers instead, because a _headers file does not apply to
+// Worker-generated responses and routing every asset through the Worker would
+// turn free asset serving into billed invocations.
+app.use("*", securityHeaders);
 
 /**
  * CORS is opt-in and exists only for split local development - `vite dev` on

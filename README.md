@@ -6,6 +6,8 @@ two-minute clock, and then tells you how clearly you were actually understood.
 You cannot prepare for it. That is the point: the skill being trained is
 thinking and speaking under pressure, not rehearsing an answer.
 
+**Live: https://jessica.ashutoshc.workers.dev**
+
 ---
 
 ## How it works
@@ -136,6 +138,13 @@ npm run dev          # http://localhost:5173, talking to the Worker
 ```bash
 npm run deploy
 ```
+
+The Worker forces HTTPS with a 308 redirect, and every response carries a
+Content-Security-Policy, `X-Frame-Options: DENY`, `nosniff`, a referrer policy,
+HSTS, and a Permissions-Policy that grants the microphone only to this origin
+and denies camera, geolocation, payment and USB outright. Static assets get the
+same set through `apps/web/public/_headers`, because a `_headers` file does not
+apply to Worker-generated responses.
 
 `GEMINI_API_KEY`, `GROQ_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` must never
 reach the frontend bundle. Only `VITE_`-prefixed variables are exposed to the
