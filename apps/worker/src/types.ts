@@ -36,6 +36,12 @@ export interface Env {
   DAILY_AI_BUDGET?: string;
 
   // Secrets - `wrangler secret put` (spec section 52)
+  /**
+   * Optional. A Discord or Slack incoming-webhook URL. When set, the owner is
+   * pinged the first time each new person uses the site. Unset = no
+   * notifications and no network calls.
+   */
+  NOTIFY_WEBHOOK_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   GEMINI_API_KEY: string;
   GROQ_API_KEY: string;

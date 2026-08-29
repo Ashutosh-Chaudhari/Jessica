@@ -115,6 +115,49 @@ export function createRepository(supabaseUrl: string, serviceRoleKey: string) {
       if (error) throw new Error(`updateDisplayName: ${error.message}`);
     },
 
+    /**
+     * Claims the right to announce a new user, exactly once.
+     *
+     * The conditional UPDATE is the whole mechanism: only one caller can ever
+     * match `notified_at is null`, so concurrent requests cannot both send a
+     * notification. Returns the profile on the first call and null forever
+     * after, which means the caller needs no locking or bookkeeping.
+     */
+    async claimNewUserNotification(userId: string): Promise<{ display_name: string } | null> {
+      const { data, error } = await db
+        .from("profiles")
+        .update({ notified_at: new Date().toISOString() })
+        .eq("id", userId)
+        .is("notified_at", null)
+        .select("display_name")
+        .maybeSingle();
+      if (error) {
+        // Never fail a user's request over a notification.
+        console.error("claimNewUserNotification:", error.message);
+        return null;
+      }
+      return data as { display_name: string } | null;
+    },
+
+    /** Headline numbers, so each notification doubles as a status report. */
+    async siteSnapshot(): Promise<{ users: number; attemptsToday: number; callsToday: number }> {
+      const startOfDay = new Date();
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const since = startOfDay.toISOString();
+
+      const [users, attempts, calls] = await Promise.all([
+        db.from("profiles").select("id", { count: "exact", head: true }),
+        db.from("attempts").select("id", { count: "exact", head: true }).gte("created_at", since),
+        db.from("ai_usage").select("id", { count: "exact", head: true }).gte("created_at", since),
+      ]);
+
+      return {
+        users: users.count ?? 0,
+        attemptsToday: attempts.count ?? 0,
+        callsToday: calls.count ?? 0,
+      };
+    },
+
     /* ------------------------------ challenges ----------------------------- */
 
     /** The one live challenge, if any (spec section 31). */

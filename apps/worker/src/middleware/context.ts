@@ -12,6 +12,7 @@ import {
 } from "@jessica/ai";
 import type { App, RequestContext } from "../types.ts";
 import { fail } from "../utils/respond.ts";
+import { announceIfNew } from "../services/notify.ts";
 
 /** Calibrated against real gemini-embedding-001 output; see wrangler.toml. */
 const DEFAULT_SIMILARITY_THRESHOLD = 0.91;
@@ -92,6 +93,19 @@ export const withContext: MiddlewareHandler<App> = async (c, next) => {
   await next();
 
   const user = c.get("user");
+
+  // First sign of life from a new account. Runs after the response is settled
+  // and never blocks it - one conditional UPDATE decides whether anything is
+  // sent at all, so this costs a no-op write per request thereafter.
+  if (user) {
+    const announce = announceIfNew(repo, user.id, env.NOTIFY_WEBHOOK_URL, ctx.dailyBudget);
+    try {
+      c.executionCtx.waitUntil(announce);
+    } catch {
+      await announce;
+    }
+  }
+
   if (user && usage.length > 0) {
     const flush = ctx.flushUsage(user.id).catch((e: unknown) => console.error("usage flush:", e));
     try {

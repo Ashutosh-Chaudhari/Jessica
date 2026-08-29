@@ -14,7 +14,7 @@
     "build": "npm run build --workspace apps/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:worker": "npm run dev --workspace apps/worker",
-    "test": "node --test packages/types/src/logic.test.ts packages/ai/src/core.test.ts apps/worker/src/services/news.test.ts apps/worker/src/utils/rateLimit.test.ts",
+    "test": "node --test packages/types/src/logic.test.ts packages/ai/src/core.test.ts apps/worker/src/services/news.test.ts apps/worker/src/services/notify.test.ts apps/worker/src/utils/rateLimit.test.ts",
     "deploy": "npm run deploy --workspace apps/worker"
   },
   "engines": {
