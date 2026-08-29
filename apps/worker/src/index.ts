@@ -10,18 +10,25 @@ import { fail } from "./utils/respond.ts";
 const app = new Hono<App>();
 
 /**
- * In production the Worker also serves the frontend, so requests are same
- * origin and this does nothing. It exists for `vite dev` on :5173 talking to
- * `wrangler dev` on :8787.
+ * CORS is opt-in and exists only for split local development - `vite dev` on
+ * :5173 talking to `wrangler dev` on :8787. In production the Worker serves
+ * the frontend itself, so every request is same origin and needs no CORS at
+ * all.
+ *
+ * Crucially it is OFF unless ALLOWED_ORIGIN is set. A deployed API that echoes
+ * Access-Control-Allow-Origin for localhost would let anyone's dev server make
+ * credentialed calls against real accounts.
  */
-app.use("/api/*", (c, next) =>
-  cors({
-    origin: c.env.ALLOWED_ORIGIN || "http://localhost:5173",
+app.use("/api/*", async (c, next) => {
+  const origin = c.env.ALLOWED_ORIGIN;
+  if (!origin) return next();
+  return cors({
+    origin,
     allowHeaders: ["authorization", "content-type"],
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     maxAge: 86400,
-  })(c, next),
-);
+  })(c, next);
+});
 
 app.get("/api/health", (c) => c.json({ ok: true, service: "jessica-worker" }));
 
