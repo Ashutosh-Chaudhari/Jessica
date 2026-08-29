@@ -1,18 +1,196 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Jessica - broadcast-studio brutalism.
+
+   The product is speaking with no script and a running clock. The interface is
+   built the same way: exposed structure, hard rules, nothing soft to hide
+   behind. Colour comes from studio equipment rather than decoration - ON AIR
+   red, cue blue, VU amber - and red is spent ONLY on "you are live", so it
+   still means something when it appears.
+
+   Readability outranks the aesthetic here:
+   - Every text colour is solved for >= 7:1 (WCAG AAA), not 4.5:1. AA is a
+     floor for compliance, not a standard for reading without effort.
+   - Prose is set in a sans face. Mono is reserved for genuine machine readout
+     - numbers, timecode, short labels - because monospace at paragraph length
+     is tiring no matter how good the contrast is.
+   - Nothing is smaller than 12px, and wide letter-spacing appears only at
+     label sizes, never on anything you actually read.
+
+   Fill colours and text colours are separate tokens on purpose. A saturated
+   ON AIR red is right for a lamp and wrong for a sentence; making one value do
+   both jobs is exactly what produces unreadable accent text.
+--------------------------------------------------------------------------- */
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+
+  /* Fills: saturated, always sit behind something else. */
+  --color-signal: var(--signal);
+  --color-signal-fg: var(--signal-fg);
+  --color-live: var(--live);
+  --color-live-fg: var(--live-fg);
+
+  /* The same hues solved for AAA, for when they ARE the text. */
+  --color-signal-text: var(--signal-text);
+  --color-live-text: var(--live-text);
+  --color-amber-text: var(--amber-text);
+}
+
+/* Light: paper. A studio label, not a linen background. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e6e4de;
+  --surface: #f4f3ef;
+  --fg: #0b0b0c; /* 15.5:1 */
+  --muted: #4c4945; /* 7.0:1 */
+  --rule: #0b0b0c;
+
+  --signal: #1e34e6;
+  --signal-fg: #ffffff;
+  --signal-text: #1b2fcf; /* 7.0:1 */
+
+  --live: #c51d08;
+  --live-fg: #ffffff;
+  --live-text: #931606; /* 7.0:1 */
+
+  --amber-text: #654200; /* 7.1:1 */
+  --shadow-hard: 6px 6px 0 var(--rule);
+}
+
+/* Dark: ink. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0b0c;
+  --surface: #141416;
+  --fg: #e6e4de; /* 15.5:1 */
+  --muted: #a8a49e; /* 7.2:1 against the lighter surface */
+  --rule: #e6e4de;
+
+  --signal: #5f74ff;
+  --signal-fg: #06060a;
+  --signal-text: #8998ff; /* 7.0:1 */
+
+  --live: #ff2d16;
+  --live-fg: #06060a;
+  --live-text: #ff7f71; /* 7.2:1 */
+
+  --amber-text: #ffb800; /* 10.6:1 */
+  --shadow-hard: 6px 6px 0 var(--rule);
 }
 
 html {
-  color-scheme: dark;
+  background: var(--bg);
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 antialiased;
+  background: var(--bg);
+  color: var(--fg);
+  /* Sans by default. Mono is opt-in, for readouts and labels only. */
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  @apply bg-emerald-400/30;
+  background: var(--signal);
+  color: var(--signal-fg);
+}
+
+/* Brutalism keeps the focus ring visible and blunt rather than hiding it. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@layer utilities {
+  .rule {
+    border-color: var(--rule);
+  }
+
+  /* Section label. 12px is the floor, and the tracking stays loose enough to
+     read as a label without breaking the word into separate letters. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 0.88;
+    text-transform: uppercase;
+  }
+
+  /* Long-form: transcripts, feedback, explanations. */
+  .prose-body {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  /* A machine readout: numbers, timecode, counts. */
+  .readout {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .hard-shadow {
+    box-shadow: var(--shadow-hard);
+  }
+
+  /* Scene + plane: a surface receding from the reader. */
+  .scene {
+    perspective: 900px;
+    perspective-origin: 50% 30%;
+  }
+  .plane {
+    transform: rotateX(16deg) rotateZ(-1deg);
+    transform-style: preserve-3d;
+  }
+
+  .lift {
+    transition:
+      transform 160ms ease-out,
+      box-shadow 160ms ease-out;
+  }
+  .lift:hover {
+    transform: translate3d(-3px, -3px, 0);
+    box-shadow: 9px 9px 0 var(--rule);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .plane {
+    transform: none;
+  }
 }

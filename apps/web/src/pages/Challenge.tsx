@@ -4,10 +4,8 @@ import type { ActiveChallenge, SubmitChallengeResponse } from "@jessica/types";
 import { DEFAULT_PASS_RULES, MAX_RECORDING_SECONDS } from "@jessica/types";
 import { api } from "../services";
 import { Layout } from "../components/Layout";
-import { Button } from "../components/Button";
-import { Card } from "../components/Card";
-import { PrivacyNote } from "../components/PrivacyNote";
-import { formatClock } from "../hooks/format";
+import { Button, Eyebrow, Notice, QuoteBlock, Slab } from "../components/primitives";
+import { Clock, LiveLamp } from "../components/Clock";
 import { useRecorder } from "../hooks/useRecorder";
 
 type Phase = "generating" | "loadFailed" | "preparing" | "recording" | "processing" | "submitFailed";
@@ -33,7 +31,7 @@ export default function Challenge() {
         return true;
       })
       .catch((e: unknown) => {
-        // Without this the page sits on "Generating your topic..." forever.
+        // Without this the page sits on "finding you a topic" forever.
         setLoadError(e instanceof Error ? e.message : "Could not start a challenge.");
         setPhase("loadFailed");
         return false;
@@ -41,18 +39,17 @@ export default function Challenge() {
   }, []);
 
   useEffect(() => {
-    document.title = `Challenge - Jessica`;
+    document.title = "Challenge - Jessica";
     void loadChallenge();
   }, [loadChallenge]);
 
-  // Auto-navigate once a submission completes.
   useEffect(() => {
     if (result) navigate(`/result/${result.attempt.id}`, { state: result });
   }, [result, navigate]);
 
   const startSpeaking = useCallback(async () => {
     if (!challenge) return;
-    if (!(await recorder.start())) return; // the error card explains why
+    if (!(await recorder.start())) return; // the error slab explains why
     setPhase("recording");
   }, [challenge, recorder]);
 
@@ -96,139 +93,136 @@ export default function Challenge() {
     setPhase("preparing");
   }, [recorder]);
 
+  const remaining = MAX_RECORDING_SECONDS - recorder.elapsedSeconds;
+  const live = phase === "recording";
+
   return (
     <Layout>
-      <p className="mb-8 text-center font-mono text-xs uppercase tracking-[0.35em] text-zinc-500">
-        Your Challenge
-      </p>
-
       {phase === "generating" && (
-        <Card className="mx-auto max-w-2xl p-12 text-center">
-          <p className="font-mono text-sm text-zinc-500">Generating your topic…</p>
-        </Card>
+        <Slab className="p-12">
+          <Eyebrow>Finding you a topic</Eyebrow>
+          <p className="display mt-4 text-3xl">Stand by</p>
+          <p className="mt-3 prose-body text-muted">
+            Checking for something you have not been given before.
+          </p>
+        </Slab>
       )}
 
       {phase === "loadFailed" && (
-        <Card className="mx-auto max-w-2xl border-red-900/50 p-10 text-center">
-          <p className="text-sm text-red-300">{loadError}</p>
-          <div className="mt-6 flex flex-col items-center gap-3">
+        <Slab className="p-10">
+          <Eyebrow>Could not start</Eyebrow>
+          <p className="mt-4 font-sans text-base">{loadError}</p>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
             <Button onClick={() => void loadChallenge()}>Try again</Button>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="cursor-pointer text-xs text-zinc-600 hover:text-zinc-400"
-            >
+            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
               Back to dashboard
-            </button>
+            </Button>
           </div>
-        </Card>
+        </Slab>
       )}
 
-      {(phase === "preparing" || phase === "recording") && challenge && (
-        <Card className="mx-auto max-w-2xl p-10">
-          <h1 className="text-center text-2xl font-medium leading-snug text-zinc-50">
-            {challenge.topic_text}
-          </h1>
-
-          <div className="mt-10 text-center">
-            <span className="font-mono text-5xl tabular-nums text-emerald-300">
-              {formatClock(
-                phase === "recording" ? recorder.elapsedSeconds : MAX_RECORDING_SECONDS,
-              )}
-            </span>
-            {phase === "recording" && (
-              // Driven by the recorder, not the phase: at two minutes it stops
-              // itself and the indicator has to stop lying about it.
-              <p
-                className={`mt-3 flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-widest ${
-                  recorder.recording ? "text-red-400" : "text-zinc-500"
-                }`}
-              >
-                <span
-                  className={`inline-block h-2 w-2 rounded-full ${
-                    recorder.recording ? "animate-pulse bg-red-500" : "bg-zinc-600"
-                  }`}
-                />
-                {recorder.recording ? "Recording" : "Time is up"}
-              </p>
-            )}
+      {(phase === "preparing" || live) && challenge && (
+        <>
+          <div className="border-b-2 rule pb-6">
+            <div className="flex items-center justify-between gap-4">
+              <Eyebrow>Your topic</Eyebrow>
+              <LiveLamp live={recorder.recording} />
+            </div>
+            <h1 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
+              {challenge.topic_text}
+            </h1>
           </div>
 
-          <div className="mt-10 flex flex-col items-center gap-4">
+          <div className="scene mt-10">
+            <div className="plane origin-left">
+              <div className="inline-block border-2 rule bg-surface px-6 py-3 hard-shadow">
+                <Clock seconds={live ? Math.max(0, remaining) : MAX_RECORDING_SECONDS} live={recorder.recording} />
+              </div>
+            </div>
+          </div>
+
+          {live && !recorder.recording && (
+            <p className="mt-6 font-mono text-sm font-bold uppercase tracking-[0.1em] text-amber-text">
+              Time is up — send it
+            </p>
+          )}
+
+          <div className="mt-10 flex flex-wrap items-center gap-4 border-t-2 rule pt-8">
             {phase === "preparing" ? (
               <>
-                <Button onClick={() => void startSpeaking()} className="px-10 py-3 tracking-wide">
-                  START SPEAKING
+                <Button onClick={() => void startSpeaking()} className="px-8 py-4 text-base">
+                  Start speaking
                 </Button>
-                <p className="max-w-sm text-center text-xs leading-relaxed text-zinc-600">
-                  Speak for at least {DEFAULT_PASS_RULES.min_duration_seconds} seconds and up to{" "}
-                  {MAX_RECORDING_SECONDS / 60} minutes.
-                </p>
-                <PrivacyNote className="max-w-sm" />
+                <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                  Not now
+                </Button>
               </>
             ) : (
-              <Button
-                variant="secondary"
-                onClick={() => void finishSpeaking()}
-                className="px-10 py-3 tracking-wide"
-              >
-                FINISH
+              <Button variant="outline" onClick={() => void finishSpeaking()} className="px-8 py-4 text-base">
+                Finish
               </Button>
             )}
-            {phase === "preparing" && (
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="cursor-pointer text-xs text-zinc-600 hover:text-zinc-400"
-              >
-                Back to dashboard
-              </button>
-            )}
           </div>
-        </Card>
+
+          {phase === "preparing" && (
+            <div className="mt-8 grid gap-6 border-t-2 rule pt-6 sm:grid-cols-2">
+              <p className="prose-body text-muted">
+                Speak for at least {DEFAULT_PASS_RULES.min_duration_seconds} seconds and up to{" "}
+                {MAX_RECORDING_SECONDS / 60} minutes. The clock stops itself at the limit.
+              </p>
+              <p className="prose-body text-muted">
+                Your voice goes to a cloud speech service for transcription, and the transcript
+                to an AI service for scoring. The audio is not kept.
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {phase === "processing" && (
-        <Card className="mx-auto max-w-2xl p-12 text-center">
-          <p className="font-mono text-sm text-zinc-400">Jessica is listening…</p>
-          <p className="mt-2 text-xs text-zinc-600">
-            Transcribing and evaluating your response.
+        <Slab className="p-12">
+          <Eyebrow>Listening</Eyebrow>
+          <p className="display mt-4 text-3xl">Working it out</p>
+          <p className="mt-3 prose-body text-muted">
+            Transcribing what you said, then scoring how it came across.
           </p>
-        </Card>
+        </Slab>
       )}
 
       {phase === "submitFailed" && (
-        <Card className="mx-auto max-w-2xl border-red-900/50 p-10 text-center">
-          <p className="text-sm text-red-300">{submitError}</p>
-          <p className="mt-2 text-xs text-zinc-600">Your recording is still here.</p>
-          <div className="mt-6 flex flex-col items-center gap-3">
+        <Slab className="p-10">
+          <Eyebrow>Not sent</Eyebrow>
+          <p className="mt-4 font-sans text-base">{submitError}</p>
+          <p className="mt-2 font-mono text-xs text-muted">Your recording is still here.</p>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
             <Button onClick={() => void send()}>Send it again</Button>
-            <button
-              onClick={rerecord}
-              className="cursor-pointer text-xs text-zinc-600 hover:text-zinc-400"
-            >
-              Record a new answer instead
-            </button>
+            <Button variant="ghost" onClick={rerecord}>
+              Record a new answer
+            </Button>
           </div>
-        </Card>
+        </Slab>
       )}
 
       {recorder.error && phase !== "processing" && (
-        <Card className="mx-auto mt-6 max-w-2xl border-red-900/50 p-5 text-center">
-          <p className="text-sm text-red-300">
+        <div className="mt-6">
+          <Notice>
             {recorder.error === "denied"
-              ? "Microphone access was denied. Allow mic access in your browser to record."
+              ? "Microphone access was denied. Allow it in your browser, then try again."
               : "Audio recording is not available in this browser."}
-          </p>
-          <Button variant="secondary" className="mt-4" onClick={() => void startSpeaking()}>
+          </Notice>
+          <Button variant="outline" className="mt-4" onClick={() => void startSpeaking()}>
             Try again
           </Button>
-        </Card>
+        </div>
       )}
 
       {submitError && phase === "preparing" && (
-        <Card className="mx-auto mt-6 max-w-2xl border-red-900/50 p-5 text-center">
-          <p className="text-sm text-red-300">{submitError}</p>
-        </Card>
+        <div className="mt-6">
+          <Notice>{submitError}</Notice>
+        </div>
       )}
+
+      {phase === "preparing" && <QuoteBlock seed={challenge?.topic_text.length ?? 1} className="mt-12" />}
     </Layout>
   );
 }

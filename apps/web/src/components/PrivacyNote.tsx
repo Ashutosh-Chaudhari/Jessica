@@ -5,10 +5,11 @@
  */
 export function PrivacyNote({ className = "" }: { className?: string }) {
   return (
-    <p className={`text-center text-xs leading-relaxed text-zinc-600 ${className}`}>
-      Your voice is sent to our cloud speech service for transcription, and the
-      transcript to our AI evaluation service for communication analysis. Audio
-      is not permanently stored.
+    <p
+      className={`border-l-4 rule bg-bg px-3 py-2 font-mono text-xs leading-relaxed text-muted ${className}`}
+    >
+      Your voice is sent to a cloud speech service for transcription, and the transcript to an AI
+      service for scoring. The audio is not kept.
     </p>
   );
 }

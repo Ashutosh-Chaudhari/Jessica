@@ -209,6 +209,30 @@ const challenges = {
   },
 };
 
+const profile = {
+  async updateDisplayName(displayName: string): Promise<string> {
+    const session = mockStore.getSession();
+    if (!session) throw new Error("You are not signed in.");
+
+    const trimmed = displayName.trim();
+    // Same bounds the Worker enforces, so the mock cannot accept what the real
+    // backend would reject.
+    if (trimmed.length < 1 || trimmed.length > 60) {
+      throw new Error("Your name needs to be between 1 and 60 characters.");
+    }
+
+    mockStore.setSession({ ...session, display_name: trimmed });
+    const stored = mockStore.findUser(session.email);
+    if (stored) mockStore.saveUser({ ...stored, display_name: trimmed });
+    return trimmed;
+  },
+
+  async deleteAccount(): Promise<void> {
+    await delay(300);
+    mockStore.clearAll();
+  },
+};
+
 const progress = {
   async getStats(): Promise<ProgressStats> {
     const attempts = mockStore.getAttempts();
@@ -220,4 +244,4 @@ const progress = {
   },
 };
 
-export const mockApi: JessicaApi = { auth, challenges, progress };
+export const mockApi: JessicaApi = { auth, challenges, profile, progress };

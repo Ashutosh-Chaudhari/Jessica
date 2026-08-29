@@ -42,6 +42,17 @@ GEMINI_EMBEDDING_MODEL = "gemini-embedding-001"
 GEMINI_THINKING_LEVEL = "low"
 GROQ_STT_MODEL = "whisper-large-v3-turbo"
 
+# Topic generation and scoring run on Groq, not Gemini. The free tiers are not
+# close: Groq allows 1000 requests/day against Gemini's 20, answers in ~600ms
+# rather than 5-10s, and scored the same transcripts just as sharply
+# (relevance 100 on topic, 0 off topic). Set AI_TEXT_PROVIDER = "gemini" to
+# switch back without touching code.
+#
+# Embeddings stay on Gemini regardless: Groq has no embedding model, and
+# without embeddings there is no semantic duplicate detection.
+AI_TEXT_PROVIDER = "groq"
+GROQ_CHAT_MODEL = "qwen/qwen3.8-27b"
+
 # Cosine similarity above which a new topic counts as one the user already
 # did (spec section 22). Calibrated against gemini-embedding-001 at 768 dims:
 # paraphrases of a done topic scored 0.956-1.000, genuinely different angles on

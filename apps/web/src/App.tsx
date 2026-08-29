@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Challenge from "./pages/Challenge";
 import Result from "./pages/Result";
 import History from "./pages/History";
+import Profile from "./pages/Profile";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -14,7 +15,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="font-mono text-sm text-zinc-500">loading…</p>
+        <p className="font-mono text-sm uppercase tracking-[0.1em] text-muted">Loading</p>
       </div>
     );
   }
@@ -28,6 +29,7 @@ export default function App() {
       <Route path="/challenge" element={user ? <Challenge /> : <Navigate to="/login" replace />} />
       <Route path="/result/:attemptId" element={user ? <Result /> : <Navigate to="/login" replace />} />
       <Route path="/history" element={user ? <History /> : <Navigate to="/login" replace />} />
+      <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

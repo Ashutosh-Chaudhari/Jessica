@@ -30,6 +30,13 @@ export interface ChallengeService {
   skip(challengeId: string): Promise<void>;
 }
 
+export interface ProfileService {
+  /** Returns the stored name, which may differ from what was typed (trimmed). */
+  updateDisplayName(displayName: string): Promise<string>;
+  /** Removes the account and everything attached to it (spec section 61). */
+  deleteAccount(): Promise<void>;
+}
+
 export interface ProgressService {
   getStats(): Promise<ProgressStats>;
   getHistory(): Promise<HistoryEntry[]>;
@@ -38,5 +45,6 @@ export interface ProgressService {
 export interface JessicaApi {
   auth: AuthService;
   challenges: ChallengeService;
+  profile: ProfileService;
   progress: ProgressService;
 }

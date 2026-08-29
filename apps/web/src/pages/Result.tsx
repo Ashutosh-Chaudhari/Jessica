@@ -3,8 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router";
 import type { SubmitChallengeResponse } from "@jessica/types";
 import { api } from "../services";
 import { Layout } from "../components/Layout";
-import { Button } from "../components/Button";
-import { Card, ScoreBar } from "../components/Card";
+import { Button, Eyebrow, Meter, Notice, QuoteBlock, Slab } from "../components/primitives";
 
 export default function Result() {
   const { attemptId } = useParams();
@@ -14,11 +13,11 @@ export default function Result() {
     (location.state as SubmitChallengeResponse | null) ?? null,
   );
   const [showTranscript, setShowTranscript] = useState(false);
-  const [retrying, setRetrying] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = `Result - Jessica`;
+    document.title = "Result - Jessica";
     // Refresh-safe: fall back to stored history if navigation state is gone.
     if (!data && attemptId) {
       void api.progress.getHistory().then((entries) => {
@@ -47,12 +46,13 @@ export default function Result() {
   if (!data) {
     return (
       <Layout>
-        <Card className="mx-auto max-w-2xl p-12 text-center">
-          <p className="text-sm text-zinc-500">Result not found.</p>
-          <Link to="/dashboard" className="mt-4 inline-block">
-            <Button variant="secondary">Back to dashboard</Button>
+        <Slab className="p-12">
+          <Eyebrow>Not found</Eyebrow>
+          <p className="display mt-4 text-3xl">No such result</p>
+          <Link to="/dashboard" className="mt-8 inline-block">
+            <Button variant="outline">Back to dashboard</Button>
           </Link>
-        </Card>
+        </Slab>
       </Layout>
     );
   }
@@ -60,7 +60,7 @@ export default function Result() {
   const { attempt, evaluation } = data;
 
   async function handleRetry() {
-    setRetrying(true);
+    setBusy(true);
     setActionError(null);
     try {
       await api.challenges.retry(attempt.challenge_id);
@@ -68,12 +68,12 @@ export default function Result() {
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Could not start the retry.");
     } finally {
-      setRetrying(false);
+      setBusy(false);
     }
   }
 
   async function handleSkip() {
-    setRetrying(true);
+    setBusy(true);
     setActionError(null);
     try {
       await api.challenges.skip(attempt.challenge_id);
@@ -81,112 +81,109 @@ export default function Result() {
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Could not skip this topic.");
     } finally {
-      setRetrying(false);
+      setBusy(false);
     }
   }
 
   return (
     <Layout>
-      <div className="mx-auto max-w-2xl">
-        <p className="mb-8 text-center font-mono text-xs uppercase tracking-[0.35em] text-zinc-500">
-          Your Result
-        </p>
+      <div className="border-b-2 rule pb-6">
+        <Eyebrow>You said</Eyebrow>
+        <h1 className="mt-3 font-display text-xl font-bold leading-tight tracking-tight sm:text-2xl">
+          {attempt.topic_text}
+        </h1>
+      </div>
 
-        <Card className="p-10">
-          <div className="text-center">
-            <span className="font-mono text-7xl font-bold tabular-nums text-emerald-300">
-              {evaluation.overall}
-            </span>
-            <p className="mt-3 text-sm font-medium tracking-wide">
-              {evaluation.passed ? (
-                <span className="text-emerald-300">PASSED - topic completed</span>
-              ) : (
-                <span className="text-amber-400">NOT PASSED - you can retry</span>
-              )}
-            </p>
-            {evaluation.fail_reason && (
-              <p className="mx-auto mt-3 max-w-sm text-sm text-zinc-400">
-                {evaluation.fail_reason}
-              </p>
-            )}
-          </div>
-
-          <div className="mt-10 space-y-4">
-            <ScoreBar label="Fluency" score={evaluation.fluency} />
-            <ScoreBar label="Coherence" score={evaluation.coherence} />
-            <ScoreBar label="Vocabulary" score={evaluation.vocabulary} />
-            <ScoreBar label="Relevance" score={evaluation.relevance} />
-            <ScoreBar label="Structure" score={evaluation.structure} />
-          </div>
-
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
-            <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-300">
-                Good
-              </h3>
-              <ul className="space-y-1.5 text-sm text-zinc-400">
-                {evaluation.feedback.slice(0, Math.ceil(evaluation.feedback.length / 2)).map((f) => (
-                  <li key={f}>{f}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-amber-400">
-                Improve
-              </h3>
-              <ul className="space-y-1.5 text-sm text-zinc-400">
-                {evaluation.feedback.slice(Math.ceil(evaluation.feedback.length / 2)).map((f) => (
-                  <li key={f}>{f}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-8 flex items-center justify-between border-t border-zinc-800 pt-5 text-xs text-zinc-600">
-            <span>Duration {attempt.duration_seconds}s</span>
-            <span>{evaluation.filler_count} filler words detected</span>
-          </div>
-        </Card>
-
-        <div className="mt-4">
-          <button
-            onClick={() => setShowTranscript((v) => !v)}
-            className="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            {showTranscript ? "Hide transcript" : "View transcript"}
-          </button>
-          {showTranscript && (
-            <Card className="mt-3 p-5">
-              <p className="text-sm leading-relaxed text-zinc-300">{attempt.transcript}</p>
-            </Card>
-          )}
+      {/* The score, at the scale it deserves. */}
+      <div className="mt-8 grid gap-6 sm:grid-cols-[auto_1fr] sm:items-end">
+        <div className="border-2 rule bg-surface px-8 py-5 hard-shadow">
+          <span className="display tabular block text-8xl sm:text-9xl">{evaluation.overall}</span>
         </div>
-
-        <div className="mt-8 flex flex-col items-center gap-3">
-          {evaluation.passed ? (
-            <Link to="/challenge">
-              <Button className="px-8 py-3 tracking-wide">NEXT CHALLENGE</Button>
-            </Link>
-          ) : (
-            <>
-              <Button onClick={() => void handleRetry()} disabled={retrying} className="px-8 py-3 tracking-wide">
-                {retrying ? "Preparing…" : "RETRY THIS TOPIC"}
-              </Button>
-              <button
-                onClick={() => void handleSkip()}
-                disabled={retrying}
-                className="cursor-pointer text-xs text-zinc-600 hover:text-zinc-400 disabled:cursor-not-allowed"
-              >
-                Skip this topic instead
-              </button>
-            </>
+        <div className="pb-2">
+          <p
+            className={`display text-3xl sm:text-4xl ${evaluation.passed ? "text-signal-text" : "text-amber-text"}`}
+          >
+            {evaluation.passed ? "Topic completed" : "Not this time"}
+          </p>
+          {evaluation.fail_reason && (
+            <p className="mt-3 max-w-md prose-body text-muted">
+              {evaluation.fail_reason}
+            </p>
           )}
-          {actionError && <p className="text-sm text-red-300">{actionError}</p>}
-          <Link to="/dashboard" className="text-xs text-zinc-600 hover:text-zinc-400">
-            Back to dashboard
-          </Link>
+          <p className="mt-3 font-mono text-sm uppercase tracking-[0.1em] text-muted">
+            {attempt.duration_seconds}s spoken · {evaluation.filler_count} filler words
+          </p>
         </div>
       </div>
+
+      <section className="mt-10 border-t-2 rule pt-8">
+        <Eyebrow>How it came across</Eyebrow>
+        <div className="mt-5 space-y-3">
+          <Meter label="Fluency" score={evaluation.fluency} />
+          <Meter label="Coherence" score={evaluation.coherence} />
+          <Meter label="Vocabulary" score={evaluation.vocabulary} />
+          <Meter label="Relevance" score={evaluation.relevance} />
+          <Meter label="Structure" score={evaluation.structure} />
+        </div>
+      </section>
+
+      {evaluation.feedback.length > 0 && (
+        <section className="mt-10 border-t-2 rule pt-8">
+          <Eyebrow>Notes</Eyebrow>
+          <ul className="mt-4 space-y-3">
+            {evaluation.feedback.map((f) => (
+              <li key={f} className="border-l-4 border-signal pl-4 prose-body">
+                {f}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="mt-10 border-t-2 rule pt-6">
+        <button
+          onClick={() => setShowTranscript((v) => !v)}
+          className="cursor-pointer font-mono text-sm font-bold uppercase tracking-[0.1em] underline decoration-2 underline-offset-4 hover:text-signal-text"
+        >
+          {showTranscript ? "Hide what you said" : "Read what you said"}
+        </button>
+        {showTranscript && (
+          <Slab className="mt-4 p-6">
+            <p className="prose-body">{attempt.transcript}</p>
+          </Slab>
+        )}
+      </section>
+
+      <div className="mt-10 flex flex-wrap items-center gap-4 border-t-2 rule pt-8">
+        {evaluation.passed ? (
+          <Link to="/challenge">
+            <Button className="px-8 py-4 text-base">Next challenge</Button>
+          </Link>
+        ) : (
+          <>
+            <Button onClick={() => void handleRetry()} disabled={busy} className="px-8 py-4 text-base">
+              {busy ? "Working…" : "Try this topic again"}
+            </Button>
+            <Button variant="ghost" onClick={() => void handleSkip()} disabled={busy}>
+              Give me a different one
+            </Button>
+          </>
+        )}
+        <Link
+          to="/dashboard"
+          className="font-mono text-sm uppercase tracking-[0.1em] text-muted underline decoration-2 underline-offset-4 hover:text-fg"
+        >
+          Dashboard
+        </Link>
+      </div>
+
+      {actionError && (
+        <div className="mt-6">
+          <Notice>{actionError}</Notice>
+        </div>
+      )}
+
+      <QuoteBlock seed={evaluation.overall} className="mt-12" />
     </Layout>
   );
 }

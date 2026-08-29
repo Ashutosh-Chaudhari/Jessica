@@ -17,6 +17,14 @@ export interface Env {
   /** "low" | "high"; empty omits the field for models that reject it. */
   GEMINI_THINKING_LEVEL?: string;
   GROQ_STT_MODEL?: string;
+  /** Chat model for topic generation and scoring. */
+  GROQ_CHAT_MODEL?: string;
+  /**
+   * Which provider writes topics and scores answers: "groq" (default) or
+   * "gemini". Embeddings are Gemini either way - Groq has no embedding model,
+   * and semantic duplicate detection is not optional (spec sections 22, 25).
+   */
+  AI_TEXT_PROVIDER?: string;
   /** Dev origin allowed through CORS; unused in production (same origin). */
   ALLOWED_ORIGIN?: string;
   /** Cosine similarity above which a topic counts as already done. */

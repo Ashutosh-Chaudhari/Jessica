@@ -14,6 +14,10 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<SignupResult>;
   logout: () => Promise<void>;
+  /** Reflect a name change made on the profile page without a refetch. */
+  applyDisplayName: (displayName: string) => void;
+  /** The account is gone; drop the session without calling sign-out again. */
+  clearSession: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -45,6 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.auth.logout();
       setUser(null);
     },
+    applyDisplayName: (displayName) =>
+      setUser((current) => (current ? { ...current, display_name: displayName } : current)),
+    clearSession: () => setUser(null),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

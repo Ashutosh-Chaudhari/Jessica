@@ -4,8 +4,11 @@ import {
   createGeminiEmbeddings,
   createGeminiEvaluator,
   createGeminiTopicGenerator,
+  createGroqEvaluator,
   createGroqSpeechToText,
+  createGroqTopicGenerator,
   type GeminiConfig,
+  type GroqChatConfig,
 } from "@jessica/ai";
 import type { App, RequestContext } from "../types.ts";
 import { fail } from "../utils/respond.ts";
@@ -44,17 +47,26 @@ export const withContext: MiddlewareHandler<App> = async (c, next) => {
     onUsage: (e) => usage.push(e),
   };
 
+  // Topic generation and scoring go to Groq by default. Measured, not assumed:
+  //   Groq  qwen3.8-27b   1000 requests/day, ~600ms, relevance 100 on topic / 0 off
+  //   Gemini 3.6-flash      20 requests/day, ~5-10s, relevance  98 on topic / 0 off
+  // Same discrimination, fifty times the daily budget. Embeddings stay on
+  // Gemini because Groq publishes no embedding model, and dropping semantic
+  // duplicate detection would gut the product (spec sections 22, 25, 87).
+  const useGemini = (env.AI_TEXT_PROVIDER || "groq").toLowerCase() === "gemini";
+  const groqChat: GroqChatConfig = {
+    apiKey: env.GROQ_API_KEY,
+    model: env.GROQ_CHAT_MODEL || "qwen/qwen3.8-27b",
+    onUsage: (e) => usage.push(e),
+  };
+
   const ctx: RequestContext = {
     repo,
-    topics: createGeminiTopicGenerator(gemini),
+    topics: useGemini ? createGeminiTopicGenerator(gemini) : createGroqTopicGenerator(groqChat),
     embeddings: createGeminiEmbeddings(gemini),
-    // Scoring is a smaller job than inventing a topic, and it bills against a
-    // separate per-model quota. Measured on the same transcripts: relevance 95
-    // vs 98, off-topic still collapses to 0, and it answers in ~1.4s not ~7s.
-    evaluator: createGeminiEvaluator({
-      ...gemini,
-      model: env.GEMINI_EVAL_MODEL || "gemini-flash-lite-latest",
-    }),
+    evaluator: useGemini
+      ? createGeminiEvaluator({ ...gemini, model: env.GEMINI_EVAL_MODEL || "gemini-flash-lite-latest" })
+      : createGroqEvaluator(groqChat),
     stt: createGroqSpeechToText({
       apiKey: env.GROQ_API_KEY,
       model: env.GROQ_STT_MODEL || "whisper-large-v3-turbo",

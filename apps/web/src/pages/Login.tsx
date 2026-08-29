@@ -1,13 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import {
-  AuthShell,
-  ErrorNote,
-  SubmitButton,
-  handleAuthError,
-  onSubmitGuard,
-} from "./AuthParts";
+import { AuthShell, ErrorNote, SubmitButton, handleAuthError, onSubmitGuard } from "./AuthParts";
 import { useAuth } from "../hooks/useAuth";
+import { Field } from "../components/primitives";
 
 export default function Login() {
   const { login } = useAuth();
@@ -31,31 +26,38 @@ export default function Login() {
   }
 
   return (
-    <AuthShell title="Welcome back">
-      <form onSubmit={onSubmitGuard(submit)} className="space-y-4">
-        <input
+    <AuthShell
+      title="Back for another?"
+      intro="Pick up where you left off. Your streak is waiting and it does not care how busy the week was."
+      seed={7}
+    >
+      <form onSubmit={onSubmitGuard(submit)} className="space-y-5">
+        <Field
+          id="email"
+          label="Email"
           type="email"
           required
-          placeholder="Email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400"
         />
-        <input
+        <Field
+          id="password"
+          label="Password"
           type="password"
           required
-          placeholder="Password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400"
         />
         <ErrorNote message={error} />
         <SubmitButton busy={busy} label="Log in" />
       </form>
-      <p className="mt-5 text-center text-sm text-zinc-500">
-        New here?{" "}
-        <Link to="/signup" className="text-emerald-300 hover:text-emerald-200">
-          Create an account
+
+      <p className="mt-6 border-t-2 rule pt-5 font-mono text-sm uppercase tracking-[0.1em] text-muted">
+        No account yet?{" "}
+        <Link to="/signup" className="text-fg underline decoration-2 underline-offset-4 hover:text-signal-text">
+          Create one
         </Link>
       </p>
     </AuthShell>

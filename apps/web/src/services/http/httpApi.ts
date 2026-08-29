@@ -118,9 +118,26 @@ const challenges = {
   },
 };
 
+const profile = {
+  updateDisplayName: async (displayName: string): Promise<string> => {
+    const res = await request<{ display_name: string }>("/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ display_name: displayName }),
+    });
+    return res.display_name;
+  },
+
+  deleteAccount: async (): Promise<void> => {
+    await request("/profile", { method: "DELETE" });
+    // The rows are gone; drop the now-orphaned session too.
+    await supabase.auth.signOut();
+  },
+};
+
 const progress = {
   getStats: () => request<ProgressStats>("/progress"),
   getHistory: () => request<HistoryEntry[]>("/history"),
 };
 
-export const httpApi: JessicaApi = { auth, challenges, progress };
+export const httpApi: JessicaApi = { auth, challenges, profile, progress };

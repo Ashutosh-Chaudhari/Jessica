@@ -1,44 +1,56 @@
 import type { FormEvent, ReactNode } from "react";
-import { Card } from "../components/Card";
+import { Link } from "react-router";
+import { Button, Eyebrow, Notice, QuoteBlock } from "../components/primitives";
+import { ThemeCycle } from "../components/ThemeToggle";
 
-export function AuthShell({ title, children }: { title: string; children: ReactNode }) {
+export function AuthShell({
+  title,
+  intro,
+  children,
+  seed = 4,
+}: {
+  title: string;
+  intro?: string;
+  children: ReactNode;
+  seed?: number;
+}) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
-      <p className="font-mono text-xs uppercase tracking-[0.35em] text-zinc-500 mb-8">
-        Jessica
-      </p>
-      <Card className="w-full max-w-sm p-8">
-        <h1 className="mb-6 text-center text-lg font-semibold">{title}</h1>
-        {children}
-      </Card>
+    <div className="min-h-screen">
+      <header className="border-b-2 rule">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+          <Link to="/">
+            <span className="display block text-xl leading-none">Jessica</span>
+            <Eyebrow>The Communicator</Eyebrow>
+          </Link>
+          <ThemeCycle />
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-5xl gap-10 px-4 py-12 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <h1 className="display text-5xl sm:text-6xl">{title}</h1>
+          {intro && (
+            <p className="mt-5 max-w-sm prose-body text-muted">{intro}</p>
+          )}
+          <QuoteBlock seed={seed} className="mt-10 hidden lg:block" />
+        </div>
+
+        <div className="border-2 rule bg-surface p-6 hard-shadow sm:p-8">{children}</div>
+      </main>
     </div>
   );
 }
 
 export function ErrorNote({ message }: { message: string | null }) {
   if (!message) return null;
-  return (
-    <p className="rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-      {message}
-    </p>
-  );
+  return <Notice>{message}</Notice>;
 }
 
-export function SubmitButton({
-  busy,
-  label,
-}: {
-  busy: boolean;
-  label: string;
-}) {
+export function SubmitButton({ busy, label }: { busy: boolean; label: string }) {
   return (
-    <button
-      type="submit"
-      disabled={busy}
-      className="w-full cursor-pointer rounded-lg bg-emerald-400 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-emerald-400/40"
-    >
-      {busy ? "Please wait…" : label}
-    </button>
+    <Button type="submit" disabled={busy} className="w-full py-4">
+      {busy ? "Working…" : label}
+    </Button>
   );
 }
 

@@ -4,11 +4,10 @@ import type { ProgressStats, TrendDimension } from "@jessica/types";
 import { api } from "../services";
 import { useAuth } from "../hooks/useAuth";
 import { Layout } from "../components/Layout";
-import { Button } from "../components/Button";
-import { Card, Stat } from "../components/Card";
+import { Button, Eyebrow, QuoteBlock, Readout, SectionHead, Slab } from "../components/primitives";
 import { formatDuration } from "../hooks/format";
 
-const DIMENSION_LABELS: Record<TrendDimension, string> = {
+const DIMENSIONS: Record<TrendDimension, string> = {
   fluency: "Fluency",
   coherence: "Coherence",
   vocabulary: "Vocabulary",
@@ -17,25 +16,24 @@ const DIMENSION_LABELS: Record<TrendDimension, string> = {
 };
 
 /**
- * null means "not enough history yet" and must not render as 0 - telling
- * someone their fluency is flat when we have three data points is a lie.
+ * null is "not enough history to say", which is not the same as "no change".
+ * Printing 0 there would be inventing a finding out of three data points.
  */
-function TrendChip({ label, delta }: { label: string; delta: number | null }) {
-  const tone =
-    delta === null
-      ? "text-zinc-600"
-      : delta > 0
-        ? "text-emerald-300"
-        : delta < 0
-          ? "text-amber-400"
-          : "text-zinc-400";
-
+function Delta({ delta }: { delta: number | null }) {
+  if (delta === null) return <span className="font-mono text-sm text-muted">not yet</span>;
+  const tone = delta > 0 ? "text-signal-text" : delta < 0 ? "text-amber-text" : "text-muted";
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-zinc-800/70 py-2 last:border-0">
-      <span className="text-sm text-zinc-400">{label}</span>
-      <span className={`font-mono text-sm tabular-nums ${tone}`}>
-        {delta === null ? "–" : delta > 0 ? `+${delta}` : delta}
-      </span>
+    <span className={`tabular font-mono text-sm font-bold ${tone}`}>
+      {delta > 0 ? `+${delta}` : delta}
+    </span>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b rule py-2.5 last:border-0">
+      <span className="font-mono text-sm uppercase tracking-[0.1em] text-muted">{label}</span>
+      {value}
     </div>
   );
 }
@@ -45,81 +43,83 @@ export default function Dashboard() {
   const [stats, setStats] = useState<ProgressStats | null>(null);
 
   useEffect(() => {
-    document.title = `Dashboard - Jessica`;
+    document.title = "Dashboard - Jessica";
     void api.progress
       .getStats()
       .then(setStats)
       .catch((e: unknown) => console.error("could not load progress:", e));
   }, []);
 
-  const hasHistory = (stats?.total_attempts ?? 0) > 0;
+  const started = (stats?.total_attempts ?? 0) > 0;
 
   return (
     <Layout>
-      <p className="text-sm text-zinc-500">Welcome back,</p>
-      <h1 className="mt-1 text-2xl font-semibold">{user?.display_name}</h1>
+      <div className="border-b-2 rule pb-8">
+        <Eyebrow>Welcome back</Eyebrow>
+        <h1 className="display mt-3 text-5xl sm:text-6xl">{user?.display_name}</h1>
+      </div>
 
       {stats && (
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <Stat label="Completed Topics" value={String(stats.completed_topics)} />
-          <Stat label="Average Score" value={stats.average_score ? String(stats.average_score) : "-"} />
-          <Stat label="Speaking Time" value={formatDuration(stats.speaking_time_seconds)} />
-          <Stat label="Current Streak" value={`${stats.current_streak_days}d`} />
-          <Stat label="Best Score" value={stats.best_score ? String(stats.best_score) : "-"} />
+        <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <Readout label="Topics done" value={String(stats.completed_topics)} accent />
+          <Readout label="Average" value={stats.average_score ? String(stats.average_score) : "—"} />
+          <Readout label="Time spoken" value={formatDuration(stats.speaking_time_seconds)} />
+          <Readout label="Streak" value={`${stats.current_streak_days}d`} />
+          <Readout label="Best" value={stats.best_score ? String(stats.best_score) : "—"} />
         </div>
       )}
 
-      <Card className="mt-10 p-10 text-center">
-        <h2 className="text-lg font-medium">Ready for a new challenge?</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">
-          You will get one unexpected topic. You have up to two minutes to
-          speak about it.
+      {/* The one action this page exists for. */}
+      <Slab className="mt-10 p-8 sm:p-12">
+        <Eyebrow>Next challenge</Eyebrow>
+        <h2 className="display mt-3 text-3xl sm:text-4xl">
+          One topic. Two minutes. No warning.
+        </h2>
+        <p className="mt-4 max-w-lg prose-body text-muted">
+          You will not know the subject until the clock is on screen. Find somewhere you can
+          speak out loud first.
         </p>
-        <Link to="/challenge" className="mt-6 inline-block">
-          <Button className="px-8 py-3 tracking-wide">START CHALLENGE</Button>
+        <Link to="/challenge" className="mt-8 inline-block">
+          <Button className="px-8 py-4 text-base">Start challenge</Button>
         </Link>
-      </Card>
+      </Slab>
 
-      {stats && hasHistory && (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <Card className="p-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Recent trend
-            </h3>
-            <p className="mt-1 text-xs text-zinc-600">
-              Your last few answers against the ones before them.
-            </p>
-            <div className="mt-3">
-              {(Object.keys(DIMENSION_LABELS) as TrendDimension[]).map((d) => (
-                <TrendChip key={d} label={DIMENSION_LABELS[d]} delta={stats.trends[d]} />
+      {stats && started && (
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+          <section>
+            <SectionHead label="Recent trend" title="last few vs the ones before" />
+            <div className="mt-4">
+              {(Object.keys(DIMENSIONS) as TrendDimension[]).map((d) => (
+                <Row key={d} label={DIMENSIONS[d]} value={<Delta delta={stats.trends[d]} />} />
               ))}
             </div>
-          </Card>
+          </section>
 
-          <Card className="p-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              All time
-            </h3>
-            <p className="mt-1 text-xs text-zinc-600">Across every topic you have been given.</p>
-            <dl className="mt-3">
-              {[
-                ["Attempts", String(stats.total_attempts)],
-                ["Topics passed", `${stats.completion_rate}%`],
-                ["Topics that needed a retry", `${stats.retry_rate}%`],
-                ["Longest streak", `${stats.longest_streak_days}d`],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex items-baseline justify-between gap-3 border-b border-zinc-800/70 py-2 last:border-0"
-                >
-                  <dt className="text-sm text-zinc-400">{label}</dt>
-                  <dd className="font-mono text-sm tabular-nums text-zinc-200">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </Card>
+          <section>
+            <SectionHead label="All time" title="every topic you have been given" />
+            <div className="mt-4">
+              <Row
+                label="Attempts"
+                value={<span className="tabular font-mono text-sm font-bold">{stats.total_attempts}</span>}
+              />
+              <Row
+                label="Topics passed"
+                value={<span className="tabular font-mono text-sm font-bold">{stats.completion_rate}%</span>}
+              />
+              <Row
+                label="Needed a retry"
+                value={<span className="tabular font-mono text-sm font-bold">{stats.retry_rate}%</span>}
+              />
+              <Row
+                label="Longest streak"
+                value={<span className="tabular font-mono text-sm font-bold">{stats.longest_streak_days}d</span>}
+              />
+            </div>
+          </section>
         </div>
       )}
+
+      <QuoteBlock seed={stats?.total_attempts ?? 0} className="mt-12" />
     </Layout>
   );
 }

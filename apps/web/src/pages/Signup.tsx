@@ -1,13 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import {
-  AuthShell,
-  ErrorNote,
-  SubmitButton,
-  handleAuthError,
-  onSubmitGuard,
-} from "./AuthParts";
+import { AuthShell, ErrorNote, SubmitButton, handleAuthError, onSubmitGuard } from "./AuthParts";
 import { useAuth } from "../hooks/useAuth";
+import { Field } from "../components/primitives";
 import { PrivacyNote } from "../components/PrivacyNote";
 
 export default function Signup() {
@@ -37,55 +32,67 @@ export default function Signup() {
 
   if (confirmEmail) {
     return (
-      <AuthShell title="Check your email">
-        <p className="text-center text-sm leading-relaxed text-zinc-400">
-          We sent a confirmation link to <span className="text-zinc-200">{email}</span>. Open it,
-          then come back and log in.
+      <AuthShell title="Check your email" seed={2}>
+        <p className="prose-body">
+          We sent a confirmation link to <span className="font-bold">{email}</span>. Open it, then
+          come back and log in.
         </p>
-        <p className="mt-5 text-center text-sm">
-          <Link to="/login" className="text-emerald-300 hover:text-emerald-200">
-            Go to log in
-          </Link>
-        </p>
+        <Link
+          to="/login"
+          className="mt-6 inline-block font-mono text-sm font-bold uppercase tracking-[0.1em] underline decoration-2 underline-offset-4 hover:text-signal-text"
+        >
+          Go to log in
+        </Link>
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell title="Create your account">
-      <form onSubmit={onSubmitGuard(submit)} className="space-y-4">
-        <input
+    <AuthShell
+      title="Two minutes from now you will be talking."
+      intro="No preparation, no topic list to study, nothing to read first. Make an account and the clock starts."
+      seed={1}
+    >
+      <form onSubmit={onSubmitGuard(submit)} className="space-y-5">
+        <Field
+          id="name"
+          label="What should we call you?"
           type="text"
           required
-          placeholder="Display name"
+          maxLength={60}
+          autoComplete="name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400"
         />
-        <input
+        <Field
+          id="email"
+          label="Email"
           type="email"
           required
-          placeholder="Email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400"
         />
-        <input
+        <Field
+          id="password"
+          label="Password"
           type="password"
           required
           minLength={8}
-          placeholder="Password (min 8 characters)"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400"
+          hint="At least 8 characters."
         />
         <ErrorNote message={error} />
-        <SubmitButton busy={busy} label="Sign up" />
+        <SubmitButton busy={busy} label="Create account" />
       </form>
-      <PrivacyNote className="mt-5" />
-      <p className="mt-5 text-center text-sm text-zinc-500">
-        Have an account?{" "}
-        <Link to="/login" className="text-emerald-300 hover:text-emerald-200">
+
+      <PrivacyNote className="mt-6" />
+
+      <p className="mt-6 border-t-2 rule pt-5 font-mono text-sm uppercase tracking-[0.1em] text-muted">
+        Already have one?{" "}
+        <Link to="/login" className="text-fg underline decoration-2 underline-offset-4 hover:text-signal-text">
           Log in
         </Link>
       </p>

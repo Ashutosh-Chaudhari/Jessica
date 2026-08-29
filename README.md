@@ -12,9 +12,9 @@ Full architecture and product spec: see `Project_MD.md`.
 | Backend        | Cloudflare Workers + Hono                                        |
 | Database       | Supabase PostgreSQL + pgvector                                   |
 | Auth           | Supabase Auth                                                    |
-| LLM            | Google Gemini 3.6 Flash (free tier)                              |
+| LLM            | Groq (qwen3.8-27b) for topics and scoring                        |
 | Speech-to-Text | Groq Whisper large-v3-turbo (free tier)                          |
-| Embeddings     | Gemini Embeddings (free tier)                                    |
+| Embeddings     | Gemini `gemini-embedding-001` (Groq has no embedding model)      |
 
 ## Repository layout
 
@@ -179,7 +179,25 @@ tasks do not need. Also a config value, because the field is generation
 specific - 2.5 wanted `thinkingBudget`, 3.x wants `thinkingLevel`, and sending
 the wrong one is a 400.
 
-**`GEMINI_EVAL_MODEL = gemini-flash-lite-latest`.** Evaluation deliberately runs
+**`AI_TEXT_PROVIDER = groq`.** Topic generation and scoring run on Groq, not
+Gemini. Measured on identical transcripts:
+
+| | requests/day | latency | on topic | off topic |
+| --- | --- | --- | --- | --- |
+| Groq `qwen3.8-27b` | 1000 | ~600ms | relevance 100 | relevance 0 |
+| Gemini `3.6-flash` | 20 | 5-10s | relevance 98 | relevance 0 |
+
+Same discrimination, fifty times the daily budget, an order of magnitude
+faster. Set `AI_TEXT_PROVIDER = "gemini"` to switch back without touching code.
+
+**Gemini stays for embeddings only.** Groq publishes no embedding model, and
+without embeddings there is no semantic duplicate detection - which is the
+thing that stops Jessica handing you a paraphrase of a topic you already did
+(spec sections 22, 25, 87). That is the one job Gemini still has, it bills
+against a separate quota, and it is the cheapest call in the system.
+
+**`GEMINI_EVAL_MODEL = gemini-flash-lite-latest`.** Only used when
+`AI_TEXT_PROVIDER = "gemini"`. Evaluation deliberately runs
 on a different model from topic generation. Measured against the same
 transcripts, flash-lite scored a strong on-topic answer 95 where the larger
 model scored 98, still collapsed an off-topic answer to relevance 0, and still
