@@ -231,6 +231,13 @@ engineering constraint:
 - Embeddings bill against a separate quota from text generation.
 - Every provider call is recorded in `ai_usage` with its success flag, so it is
   possible to see exactly where the budget went.
+- **A global daily cap (`DAILY_AI_BUDGET`, default 800) stops the app before a
+  provider does.** Per-user hourly limits stop one person hammering the app;
+  they do nothing about a hundred people each behaving reasonably. Once the
+  day's budget is spent, starting a challenge and submitting one both return a
+  plain "come back tomorrow" — reading history and progress still work, because
+  they cost nothing. Without it the first symptom of popularity is a provider
+  429 and an app that looks broken. Set it to `0` to remove the ceiling.
 
 ## Not built yet
 

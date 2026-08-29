@@ -29,6 +29,11 @@ export interface Env {
   ALLOWED_ORIGIN?: string;
   /** Cosine similarity above which a topic counts as already done. */
   SIMILARITY_THRESHOLD?: string;
+  /**
+   * Total provider calls allowed per UTC day across all users. Set to "0" to
+   * remove the ceiling.
+   */
+  DAILY_AI_BUDGET?: string;
 
   // Secrets - `wrangler secret put` (spec section 52)
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -49,6 +54,8 @@ export interface RequestContext {
   evaluator: EvaluationProvider;
   stt: SpeechToTextProvider;
   similarityThreshold: number;
+  /** Provider calls allowed per UTC day across every user; 0 disables it. */
+  dailyBudget: number;
   /** Drained into ai_usage after the response is produced. */
   flushUsage: (userId: string) => Promise<void>;
 }

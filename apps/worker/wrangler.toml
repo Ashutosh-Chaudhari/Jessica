@@ -61,6 +61,13 @@ GROQ_CHAT_MODEL = "qwen/qwen3.8-27b"
 # works" vs "Why was GPS originally developed?", 0.8656).
 SIMILARITY_THRESHOLD = "0.91"
 
+# Total provider calls allowed per UTC day, across every user. Groq's free tier
+# allows 1000/day and is the tightest limit in the stack, so stopping at 800
+# leaves headroom: the app refuses politely on its own terms instead of
+# discovering the ceiling as a provider 429 that looks like an outage.
+# Set to "0" to remove the cap.
+DAILY_AI_BUDGET = "800"
+
 # ALLOWED_ORIGIN is deliberately NOT set here. It belongs in .dev.vars, so it
 # applies to `wrangler dev` and never to the deployed Worker - which serves the
 # frontend itself and therefore needs no CORS.

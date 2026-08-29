@@ -411,6 +411,19 @@ export function createRepository(supabaseUrl: string, serviceRoleKey: string) {
 
     /* -------------------------------- usage -------------------------------- */
 
+    /**
+     * Every provider call made since `sinceIso`, across all users. This is the
+     * number the global daily budget is enforced against.
+     */
+    async countUsageSince(sinceIso: string): Promise<number> {
+      const { count, error } = await db
+        .from("ai_usage")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", sinceIso);
+      if (error) throw new Error(`countUsageSince: ${error.message}`);
+      return count ?? 0;
+    },
+
     /** Spec section 56. Best-effort: quota bookkeeping must never fail a request. */
     async logUsage(userId: string | null, rows: UsageRow[]): Promise<void> {
       if (rows.length === 0) return;

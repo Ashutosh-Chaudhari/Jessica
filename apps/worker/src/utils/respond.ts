@@ -7,6 +7,7 @@ const STATUS: Record<ApiErrorCode, number> = {
   unauthorized: 401,
   not_found: 404,
   rate_limited: 429,
+  daily_limit_reached: 503,
   invalid_request: 400,
   audio_too_large: 413,
   recording_too_long: 400,

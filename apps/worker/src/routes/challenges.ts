@@ -4,7 +4,7 @@ import type { App } from "../types.ts";
 import { assignNewChallenge, withLimits } from "../services/topics.ts";
 import { submitAttempt } from "../services/pipeline.ts";
 import { fail, failFromError } from "../utils/respond.ts";
-import { HOURLY_LIMITS, enforceHourlyLimit } from "../utils/rateLimit.ts";
+import { HOURLY_LIMITS, enforceDailyBudget, enforceHourlyLimit } from "../utils/rateLimit.ts";
 
 export const challenges = new Hono<App>();
 
@@ -20,6 +20,10 @@ challenges.post("/start", async (c) => {
     const existing = await ctx.repo.getActiveChallenge(user.id);
     if (existing) return c.json({ challenge: withLimits(existing) });
 
+    // Checked before assigning, not before returning an existing challenge:
+    // handing someone a topic they will not be allowed to submit is worse than
+    // telling them up front.
+    await enforceDailyBudget(ctx.repo, ctx.dailyBudget);
     await enforceHourlyLimit(ctx.repo, "user_challenges", user.id, HOURLY_LIMITS.start);
     return c.json({ challenge: await assignNewChallenge(ctx, user.id) });
   } catch (error) {
@@ -59,6 +63,7 @@ challenges.post("/:id/submit", async (c) => {
   }
 
   try {
+    await enforceDailyBudget(ctx.repo, ctx.dailyBudget);
     await enforceHourlyLimit(ctx.repo, "attempts", user.id, HOURLY_LIMITS.submit);
     const result = await submitAttempt(
       ctx,

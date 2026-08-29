@@ -16,6 +16,13 @@ import { fail } from "../utils/respond.ts";
 /** Calibrated against real gemini-embedding-001 output; see wrangler.toml. */
 const DEFAULT_SIMILARITY_THRESHOLD = 0.91;
 
+/**
+ * Groq's free tier allows 1000 requests/day and is the tightest limit in the
+ * stack. Stopping at 800 leaves headroom so the app degrades on its own terms
+ * rather than discovering the ceiling as a provider 429.
+ */
+const DEFAULT_DAILY_BUDGET = 800;
+
 const REQUIRED_ENV = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -73,6 +80,8 @@ export const withContext: MiddlewareHandler<App> = async (c, next) => {
       onUsage: (e) => usage.push(e),
     }),
     similarityThreshold: Number(env.SIMILARITY_THRESHOLD) || DEFAULT_SIMILARITY_THRESHOLD,
+    dailyBudget:
+      env.DAILY_AI_BUDGET === undefined ? DEFAULT_DAILY_BUDGET : Number(env.DAILY_AI_BUDGET),
     flushUsage: async (userId) => {
       const pending = usage.splice(0);
       await repo.logUsage(userId, pending);

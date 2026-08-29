@@ -153,6 +153,7 @@ export type ApiErrorCode =
   | "unauthorized"
   | "not_found"
   | "rate_limited"
+  | "daily_limit_reached"
   | "invalid_request"
   | "audio_too_large"
   | "recording_too_long"
@@ -168,6 +169,8 @@ export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   unauthorized: "Please log in again.",
   not_found: "That is no longer available.",
   rate_limited: "You have done a lot of challenges recently. Try again in a little while.",
+  daily_limit_reached:
+    "Jessica has used up today's speaking budget. It resets at midnight UTC - come back then.",
   invalid_request: "That request was not valid.",
   audio_too_large: "That recording is too large to upload.",
   recording_too_long: "That recording is longer than the two-minute limit.",
