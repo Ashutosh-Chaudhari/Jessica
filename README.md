@@ -238,7 +238,12 @@ engineering constraint:
 - Per-dimension score charts beyond the current trend deltas.
 - Social sign-in; email and password only for now.
 
+## Background
+
+The concept was inspired by a short video I came across online. Everything
+here — the architecture, the code, the interface and the copy — is written
+from scratch.
+
 ## Licence
 
-No licence file yet. Add one before sharing the code publicly if you want to
-set terms for reuse.
+[MIT](LICENSE). Use it, change it, ship it; just keep the copyright notice.

@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "description": "Jessica - The Communicator. Dynamic AI speaking challenge platform.",
+  "license": "MIT",
+  "author": "Ashutosh Chaudhari",
   "workspaces": [
     "apps/*",
     "packages/*"
