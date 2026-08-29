@@ -1,0 +1,53 @@
+import type { Repository } from "@jessica/database";
+import type { EmbeddingProvider, EvaluationProvider, SpeechToTextProvider, TopicGenerator } from "@jessica/ai";
+
+export interface Env {
+  ASSETS: { fetch: (request: Request) => Promise<Response> };
+
+  // [vars] in wrangler.toml
+  SUPABASE_URL: string;
+  GEMINI_MODEL?: string;
+  /**
+   * Evaluation runs on its own model. The free tier meters
+   * GenerateRequestsPerDayPerProjectPerModel, so splitting the two tasks across
+   * two models doubles the daily budget.
+   */
+  GEMINI_EVAL_MODEL?: string;
+  GEMINI_EMBEDDING_MODEL?: string;
+  /** "low" | "high"; empty omits the field for models that reject it. */
+  GEMINI_THINKING_LEVEL?: string;
+  GROQ_STT_MODEL?: string;
+  /** Dev origin allowed through CORS; unused in production (same origin). */
+  ALLOWED_ORIGIN?: string;
+  /** Cosine similarity above which a topic counts as already done. */
+  SIMILARITY_THRESHOLD?: string;
+
+  // Secrets - `wrangler secret put` (spec section 52)
+  SUPABASE_SERVICE_ROLE_KEY: string;
+  GEMINI_API_KEY: string;
+  GROQ_API_KEY: string;
+}
+
+export interface AuthedUser {
+  id: string;
+  email: string;
+}
+
+/** Everything a request handler needs, assembled once per request. */
+export interface RequestContext {
+  repo: Repository;
+  topics: TopicGenerator;
+  embeddings: EmbeddingProvider;
+  evaluator: EvaluationProvider;
+  stt: SpeechToTextProvider;
+  similarityThreshold: number;
+  /** Drained into ai_usage after the response is produced. */
+  flushUsage: (userId: string) => Promise<void>;
+}
+
+export interface Variables {
+  user: AuthedUser;
+  ctx: RequestContext;
+}
+
+export type App = { Bindings: Env; Variables: Variables };

@@ -1,0 +1,12 @@
+-- handle_new_user() is a trigger function and was never meant to be an API
+-- endpoint, but CREATE FUNCTION grants EXECUTE to PUBLIC by default, so it was
+-- exposed at /rest/v1/rpc/handle_new_user to both anon and authenticated.
+--
+-- Postgres refuses to call a trigger-returning function directly, so this was
+-- not exploitable - but a SECURITY DEFINER function should never sit on the
+-- public API surface by accident. The four other functions were revoked in the
+-- initial migration; this one was missed because it is invoked by a trigger
+-- rather than by the Worker.
+--
+-- Found by `get_advisors` after the schema was applied, not by reading it.
+revoke all on function public.handle_new_user() from public, anon, authenticated;

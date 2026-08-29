@@ -1,0 +1,57 @@
+#:schema node_modules/wrangler/config-schema.json
+# Jessica Worker - single deployment serving both the API (/api/*) and the
+# built React frontend as free static assets (spec sections 3, 46, 86).
+
+name = "jessica"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+# Only /api/* invokes the Worker; everything else is served as a static asset.
+run_worker_first = ["/api/*"]
+# Client-side routes like /dashboard have no file of their own - serve the SPA.
+not_found_handling = "single-page-application"
+
+# Secrets are NOT defined here (spec section 52). Set them with:
+#   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config apps/worker/wrangler.toml
+#   npx wrangler secret put GEMINI_API_KEY            --config apps/worker/wrangler.toml
+#   npx wrangler secret put GROQ_API_KEY              --config apps/worker/wrangler.toml
+# For `wrangler dev`, put the same three in apps/worker/.dev.vars instead.
+
+[vars]
+# Replace with your Supabase project URL. Not a secret - it is in every
+# frontend bundle anyway - but it is specific to your project.
+SUPABASE_URL = "https://fgkldxflmmlbdemwhuax.supabase.co"
+# gemini-2.5-flash was retired for new API keys in 2026; 3.6 is the current
+# free-tier Flash. Only this line changes when the next generation lands.
+GEMINI_MODEL = "gemini-3.6-flash"
+
+# Evaluation gets its own model on purpose. The free tier meters requests per
+# day PER MODEL (20), so scoring on a different model than topic generation
+# doubles the daily budget - and flash-lite is both faster and no worse at it.
+GEMINI_EVAL_MODEL = "gemini-flash-lite-latest"
+GEMINI_EMBEDDING_MODEL = "gemini-embedding-001"
+
+# Gemini 3 thinks before answering unless told not to. Measured: 495 thinking
+# tokens vs 0 for identical evaluation scores, so this is most of the free-tier
+# budget spent on deliberation these tasks do not need. Set to "" to omit the
+# field for a model generation that rejects it.
+GEMINI_THINKING_LEVEL = "low"
+GROQ_STT_MODEL = "whisper-large-v3-turbo"
+
+# Cosine similarity above which a new topic counts as one the user already
+# did (spec section 22). Calibrated against gemini-embedding-001 at 768 dims:
+# paraphrases of a done topic scored 0.956-1.000, genuinely different angles on
+# the same subject scored 0.699-0.872. 0.91 sits in the gap. The spec's original
+# 0.85 was inside the accept band and rejected spec test 3 ("Explain how GPS
+# works" vs "Why was GPS originally developed?", 0.8656).
+SIMILARITY_THRESHOLD = "0.91"
+
+# Only needed while the frontend runs on a different origin (vite dev).
+ALLOWED_ORIGIN = "http://localhost:5173"
+
+[observability]
+enabled = true
