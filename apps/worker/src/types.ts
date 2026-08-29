@@ -37,10 +37,13 @@ export interface Env {
 
   // Secrets - `wrangler secret put` (spec section 52)
   /**
-   * Optional. A Discord or Slack incoming-webhook URL. When set, the owner is
-   * pinged the first time each new person uses the site. Unset = no
-   * notifications and no network calls.
+   * Owner notifications, all optional. Configure one; leave the rest unset and
+   * no notification code runs at all.
+   *   RESEND_API_KEY + NOTIFY_EMAIL_TO -> email (no domain required)
+   *   NOTIFY_WEBHOOK_URL               -> ntfy.sh push, or Discord/Slack
    */
+  RESEND_API_KEY?: string;
+  NOTIFY_EMAIL_TO?: string;
   NOTIFY_WEBHOOK_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   GEMINI_API_KEY: string;

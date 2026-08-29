@@ -3,16 +3,26 @@ import type { Repository } from "@jessica/database";
 /**
  * Tells the site owner when a new person starts using Jessica.
  *
- * Deliberately a generic webhook rather than an email integration: it needs no
- * domain, no verified sender and no third-party account beyond one the owner
- * already has. The payload carries both `content` and `text` because Discord
- * reads the first and Slack the second, and each ignores the other - so the
- * same URL works with either without a config switch.
+ * Three delivery options, all optional, checked in order. Configure whichever
+ * you actually want and leave the rest unset:
+ *
+ *   1. Email, via Resend. Needs no domain and no DNS: their free tier sends
+ *      from onboarding@resend.dev to the address on your own account, which is
+ *      exactly this use case. Cloudflare's own Email Service cannot do this -
+ *      it requires a domain onboarded to Cloudflare DNS.
+ *   2. A phone push, via ntfy.sh. No account at all: pick a topic name,
+ *      install the app, done.
+ *   3. A Discord or Slack incoming webhook.
  *
  * Nothing here is allowed to affect the user. Every failure is swallowed, and
- * the caller runs it with waitUntil so the person signing up never waits for
- * someone else's Discord server to respond.
+ * the caller runs it with waitUntil, so nobody signing up ever waits on it.
  */
+
+export interface NotifyConfig {
+  resendApiKey?: string;
+  emailTo?: string;
+  webhookUrl?: string;
+}
 
 export interface NewUserEvent {
   displayName: string;
@@ -30,38 +40,80 @@ export function formatNewUserMessage(e: NewUserEvent): string {
       : `${e.callsToday} AI calls today (no cap set)`;
 
   return [
-    `**${e.displayName}** just started using Jessica.`,
+    `${e.displayName} just started using Jessica.`,
     `${e.users} ${e.users === 1 ? "person has" : "people have"} signed up in total.`,
-    `${e.attemptsToday} ${e.attemptsToday === 1 ? "attempt" : "attempts"} today · ${budget}`,
+    `${e.attemptsToday} ${e.attemptsToday === 1 ? "attempt" : "attempts"} today. ${budget}`,
   ].join("\n");
 }
 
-async function post(url: string, message: string): Promise<void> {
-  const response = await fetch(url, {
+/** True when nothing is configured, so the caller can skip all the work. */
+export function isNotifyConfigured(config: NotifyConfig): boolean {
+  return Boolean((config.resendApiKey && config.emailTo) || config.webhookUrl);
+}
+
+async function report(what: string, response: Response): Promise<void> {
+  if (!response.ok) {
+    console.error(`notify via ${what}: HTTP ${response.status} ${(await response.text()).slice(0, 200)}`);
+  }
+}
+
+async function deliver(config: NotifyConfig, subject: string, message: string): Promise<void> {
+  if (config.resendApiKey && config.emailTo) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${config.resendApiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        // Resend's shared sender. Works with no domain and no DNS records,
+        // but only delivers to the address registered on the account.
+        from: "Jessica <onboarding@resend.dev>",
+        to: [config.emailTo],
+        subject,
+        text: message,
+      }),
+    });
+    await report("resend", response);
+    return;
+  }
+
+  if (!config.webhookUrl) return;
+
+  // ntfy wants the message as the raw body, with the title in a header.
+  if (new URL(config.webhookUrl).hostname.endsWith("ntfy.sh")) {
+    const response = await fetch(config.webhookUrl, {
+      method: "POST",
+      headers: { title: subject, "content-type": "text/plain" },
+      body: message,
+    });
+    await report("ntfy", response);
+    return;
+  }
+
+  // Discord reads `content`, Slack reads `text`; sending both means one URL
+  // works with either service.
+  const response = await fetch(config.webhookUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    // Discord reads `content`, Slack reads `text`. Sending both means one URL
-    // works with either service.
     body: JSON.stringify({ content: message, text: message }),
   });
-  if (!response.ok) {
-    console.error(`notify webhook: HTTP ${response.status} ${(await response.text()).slice(0, 200)}`);
-  }
+  await report("webhook", response);
 }
 
 /**
  * Announces a user the first time they do anything, and never again.
  *
- * Returns without touching the network when no webhook is configured, so the
- * app runs identically for anyone who clones it without one.
+ * Returns without touching the database when nothing is configured, so the app
+ * runs identically for anyone who clones it without notifications set up.
  */
 export async function announceIfNew(
   repo: Repository,
   userId: string,
-  webhookUrl: string | undefined,
+  config: NotifyConfig,
   dailyBudget: number,
 ): Promise<void> {
-  if (!webhookUrl) return;
+  if (!isNotifyConfigured(config)) return;
 
   try {
     // Claims the announcement atomically; null means somebody already did it.
@@ -69,10 +121,13 @@ export async function announceIfNew(
     if (!profile) return;
 
     const snapshot = await repo.siteSnapshot();
-    await post(
-      webhookUrl,
+    const name = profile.display_name || "Someone";
+
+    await deliver(
+      config,
+      `${name} just started using Jessica`,
       formatNewUserMessage({
-        displayName: profile.display_name || "Someone",
+        displayName: name,
         users: snapshot.users,
         attemptsToday: snapshot.attemptsToday,
         callsToday: snapshot.callsToday,

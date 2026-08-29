@@ -250,25 +250,34 @@ engineering constraint:
 
 ## Owner notifications
 
-Set the optional `NOTIFY_WEBHOOK_URL` secret to a Discord or Slack incoming
-webhook and the owner is pinged the first time each new person uses the site:
+The owner can be told the first time each new person uses the site. Three
+options, all optional — configure one and leave the rest unset:
+
+| Channel | Secrets | Needs |
+| --- | --- | --- |
+| Email | `RESEND_API_KEY` + `NOTIFY_EMAIL_TO` | a [Resend](https://resend.com) account |
+| Phone push | `NOTIFY_WEBHOOK_URL` = `https://ntfy.sh/your-topic` | nothing at all |
+| Discord / Slack | `NOTIFY_WEBHOOK_URL` = the incoming-webhook URL | a server or workspace |
+
+Email uses Resend's shared `onboarding@resend.dev` sender, which needs no
+domain and no DNS records but only delivers to the address registered on the
+Resend account — exactly right for notifying yourself. Cloudflare's own Email
+Service cannot do this: it requires a domain onboarded to Cloudflare DNS.
 
 ```
-**Ada** just started using Jessica.
+Ada just started using Jessica.
 12 people have signed up in total.
-30 attempts today · 400/800 AI calls used today (50%)
+30 attempts today. 400/800 AI calls used today (50%)
 ```
 
-Each ping doubles as a status report, which is the point — it says how close
-the day is to its budget, not just that somebody arrived.
+Each ping doubles as a status report — it says how close the day is to its
+budget, not just that somebody arrived.
 
-Exactly one notification is sent per person, ever. That is enforced by a single
+Exactly one notification is sent per person, ever, enforced by a single
 conditional update (`set notified_at = now() where id = $1 and notified_at is
-null`), so concurrent requests cannot both claim it and no locking is needed.
-The webhook fires after the response with `waitUntil`, so nobody waits on it,
-and every failure is swallowed — a broken webhook must never break a signup.
-
-Leave the secret unset and no notification code runs at all.
+null`). Only one caller can match it, so concurrent requests cannot both fire
+and no locking is needed. Delivery happens after the response via `waitUntil`
+and every failure is swallowed: a broken webhook must never break a signup.
 
 ## Not built yet
 

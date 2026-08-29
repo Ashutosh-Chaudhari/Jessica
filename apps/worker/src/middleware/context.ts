@@ -98,7 +98,16 @@ export const withContext: MiddlewareHandler<App> = async (c, next) => {
   // and never blocks it - one conditional UPDATE decides whether anything is
   // sent at all, so this costs a no-op write per request thereafter.
   if (user) {
-    const announce = announceIfNew(repo, user.id, env.NOTIFY_WEBHOOK_URL, ctx.dailyBudget);
+    const announce = announceIfNew(
+      repo,
+      user.id,
+      {
+        resendApiKey: env.RESEND_API_KEY,
+        emailTo: env.NOTIFY_EMAIL_TO,
+        webhookUrl: env.NOTIFY_WEBHOOK_URL,
+      },
+      ctx.dailyBudget,
+    );
     try {
       c.executionCtx.waitUntil(announce);
     } catch {

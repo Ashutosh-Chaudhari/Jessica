@@ -1,7 +1,7 @@
 // Run: npm test   (node --test, no framework)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { announceIfNew, formatNewUserMessage } from "./notify.ts";
+import { announceIfNew, formatNewUserMessage, isNotifyConfigured } from "./notify.ts";
 
 test("the message reads correctly for the very first user", () => {
   const m = formatNewUserMessage({
@@ -11,7 +11,9 @@ test("the message reads correctly for the very first user", () => {
     callsToday: 4,
     dailyBudget: 800,
   });
-  assert.match(m, /\*\*Ada\*\* just started using Jessica\./);
+  assert.match(m, /^Ada just started using Jessica\./);
+  // Plain text, no markdown: asterisks would show up literally in an inbox.
+  assert.doesNotMatch(m, /[*_`]/);
   assert.match(m, /1 person has signed up/); // singular, not "1 people have"
   assert.match(m, /1 attempt today/); // singular
   assert.match(m, /4\/800 AI calls used today \(1%\)/);
@@ -51,8 +53,17 @@ test("no webhook configured means no work at all", async () => {
     },
   } as never;
 
-  await announceIfNew(repo, "user-1", undefined, 800);
+  await announceIfNew(repo, "user-1", {}, 800);
   assert.equal(touched, false, "must not even claim when there is nowhere to send");
+});
+
+test("a channel counts as configured only when it is actually usable", () => {
+  assert.equal(isNotifyConfigured({}), false);
+  // An API key with nowhere to send is not a configured channel.
+  assert.equal(isNotifyConfigured({ resendApiKey: "re_x" }), false);
+  assert.equal(isNotifyConfigured({ emailTo: "me@example.com" }), false);
+  assert.equal(isNotifyConfigured({ resendApiKey: "re_x", emailTo: "me@example.com" }), true);
+  assert.equal(isNotifyConfigured({ webhookUrl: "https://ntfy.sh/topic" }), true);
 });
 
 test("a repository failure never propagates to the caller", async () => {
@@ -63,7 +74,7 @@ test("a repository failure never propagates to the caller", async () => {
   } as never;
 
   // The user's request must succeed even if notification is broken.
-  await announceIfNew(repo, "user-1", "https://example.invalid/hook", 800);
+  await announceIfNew(repo, "user-1", { webhookUrl: "https://example.invalid/hook" }, 800);
 });
 
 test("an already-announced user sends nothing", async () => {
@@ -76,6 +87,6 @@ test("an already-announced user sends nothing", async () => {
     },
   } as never;
 
-  await announceIfNew(repo, "user-1", "https://example.invalid/hook", 800);
+  await announceIfNew(repo, "user-1", { webhookUrl: "https://example.invalid/hook" }, 800);
   assert.equal(snapshots, 0, "no claim means no further work");
 });
