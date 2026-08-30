@@ -247,7 +247,7 @@ The frontend talks to a `JessicaApi` interface with two implementations, HTTP
 and mock, so the UI never learns which backend it is using.
 
 ```bash
-npm test          # 38 tests, node --test, no framework
+npm test          # 39 tests, node --test, no framework
 npm run typecheck
 npm run build
 ```

@@ -1,7 +1,7 @@
 // Run: npm test   (node --test, no framework)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ESTIMATED_CALLS_PER_REQUEST, enforceDailyBudget, type BudgetContext } from "./rateLimit.ts";
+import { MAX_CALLS, enforceDailyBudget, type BudgetContext } from "./rateLimit.ts";
 import { ApiFailure } from "./failure.ts";
 
 /**
@@ -28,15 +28,33 @@ function fakeBudget(dailyBudget: number, alreadyUsed = 0) {
 }
 
 test("the budget allows a request while the day can still afford it", async () => {
-  const { ctx, spent } = fakeBudget(800, 796);
-  await enforceDailyBudget(ctx); // must not throw
-  assert.equal(spent(), 798);
-  assert.equal(ctx.reserved, ESTIMATED_CALLS_PER_REQUEST, "what it claimed must be settleable");
+  const { ctx, spent } = fakeBudget(800, 780);
+  await enforceDailyBudget(ctx, MAX_CALLS.start); // must not throw
+  assert.equal(spent(), 796);
+  assert.equal(ctx.reserved, MAX_CALLS.start, "what it claimed must be settleable");
+});
+
+test("a route claims its worst case, not its typical cost", async () => {
+  // Admission is decided by the claim, and the overrun is only discovered once
+  // the calls have been made - so claiming low is the one way past the ceiling.
+  // start can reach 5 * (generate + retry + embed) + a fallback embed.
+  assert.equal(MAX_CALLS.start, 16);
+  assert.equal(MAX_CALLS.submit, 4);
+
+  const { ctx, spent } = fakeBudget(800, 790);
+  await assert.rejects(enforceDailyBudget(ctx, MAX_CALLS.start), (e: unknown) => {
+    assert.ok(e instanceof ApiFailure);
+    return true;
+  });
+  assert.equal(spent(), 790, "10 left is not enough for a start that could spend 16");
+  // The same headroom is plenty for a submit, which can spend at most 4.
+  await enforceDailyBudget(ctx, MAX_CALLS.submit);
+  assert.equal(spent(), 794);
 });
 
 test("the budget stops at the ceiling, not one past it", async () => {
   const { ctx, spent } = fakeBudget(800, 799);
-  await assert.rejects(enforceDailyBudget(ctx), (e: unknown) => {
+  await assert.rejects(enforceDailyBudget(ctx, MAX_CALLS.submit), (e: unknown) => {
     assert.ok(e instanceof ApiFailure);
     // The user must get the polite stop, never a provider error.
     assert.equal(e.code, "daily_limit_reached");
@@ -48,7 +66,7 @@ test("the budget stops at the ceiling, not one past it", async () => {
 
 test("a budget of 0 disables the cap entirely", async () => {
   const { ctx, claims } = fakeBudget(0, 999999);
-  await enforceDailyBudget(ctx);
+  await enforceDailyBudget(ctx, MAX_CALLS.start);
   assert.equal(claims.length, 0, "disabled means it does not even ask");
 });
 
@@ -56,16 +74,16 @@ test("the claim is made up front, so it holds when requests arrive together", as
   // The regression this replaces: the budget used to COUNT ai_usage rows, which
   // are only written after the response. Fired concurrently, every request read
   // the same stale total and every one of them passed. Here 50 requests race
-  // for a budget of 20 - room for exactly 10 of them.
-  const { ctx, spent } = fakeBudget(20);
+  // for 10 submits at 4 claimed each.
+  const { ctx, spent } = fakeBudget(40);
   const outcomes = await Promise.allSettled(
-    Array.from({ length: 50 }, () => enforceDailyBudget(ctx)),
+    Array.from({ length: 50 }, () => enforceDailyBudget(ctx, MAX_CALLS.submit)),
   );
 
   const granted = outcomes.filter((o) => o.status === "fulfilled").length;
   assert.equal(granted, 10, "the ceiling binds no matter how the requests arrive");
-  assert.equal(spent(), 20);
-  assert.equal(ctx.reserved, 20, "every granted claim is accounted for");
+  assert.equal(spent(), 40);
+  assert.equal(ctx.reserved, 40, "every granted claim is accounted for");
   for (const outcome of outcomes) {
     if (outcome.status === "rejected") {
       assert.equal((outcome.reason as ApiFailure).code, "daily_limit_reached");

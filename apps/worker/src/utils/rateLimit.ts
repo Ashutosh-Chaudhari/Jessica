@@ -10,12 +10,25 @@ export const HOURLY_LIMITS = {
 const HOUR_MS = 60 * 60 * 1000;
 
 /**
- * What a request claims against the budget before it knows its real cost. Two
- * is the common path for both guarded routes: transcribe + evaluate on submit,
- * generate + embed on start. The estimate only has to be close, because the
- * request settles it against the true count on the way out.
+ * The most provider calls each guarded route can make. A request claims this
+ * up front and hands back whatever it did not spend.
+ *
+ *   start   5 generation attempts, each up to 2 calls through withRetry and
+ *           each followed by an embedding, plus one more embedding if it ends
+ *           up falling back to the static pool: 5 * (2 + 1) + 1.
+ *   submit  transcribe then evaluate, each up to 2 calls through withRetry.
+ *
+ * The worst case rather than the typical one, because claiming low is the only
+ * way the ceiling can be breached: admission is decided by the claim, and the
+ * overrun is not known until the money is already spent. Over-claiming costs
+ * nothing but strictness right at the boundary - settle_ai_calls returns the
+ * difference, so the usual start, which is served from the pool for nothing,
+ * gets all 16 back.
  */
-export const ESTIMATED_CALLS_PER_REQUEST = 2;
+export const MAX_CALLS = {
+  start: 16,
+  submit: 4,
+} as const;
 
 /** The part of the request context the budget needs; `reserved` is mutated. */
 export interface BudgetContext {
@@ -44,13 +57,13 @@ export interface BudgetContext {
  * provider. One number is one thing to reason about and one thing to tune, and
  * being conservative is the point.
  */
-export async function enforceDailyBudget(ctx: BudgetContext): Promise<void> {
+export async function enforceDailyBudget(ctx: BudgetContext, calls: number): Promise<void> {
   if (ctx.dailyBudget <= 0) return; // 0 or negative disables the cap
 
-  if (!(await ctx.repo.reserveAiCalls(ESTIMATED_CALLS_PER_REQUEST, ctx.dailyBudget))) {
+  if (!(await ctx.repo.reserveAiCalls(calls, ctx.dailyBudget))) {
     throw new ApiFailure("daily_limit_reached", `budget of ${ctx.dailyBudget} provider calls is spent`);
   }
-  ctx.reserved += ESTIMATED_CALLS_PER_REQUEST;
+  ctx.reserved += calls;
 }
 
 /**
