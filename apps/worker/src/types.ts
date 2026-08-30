@@ -65,7 +65,13 @@ export interface RequestContext {
   similarityThreshold: number;
   /** Provider calls allowed per UTC day across every user; 0 disables it. */
   dailyBudget: number;
-  /** Drained into ai_usage after the response is produced. */
+  /**
+   * Provider calls this request has claimed against the daily budget up front.
+   * Settled against the real count once the work is done, so an estimate that
+   * came in high hands the difference back.
+   */
+  reserved: number;
+  /** Drained into ai_usage, and the reservation settled, after the response. */
   flushUsage: (userId: string) => Promise<void>;
 }
 

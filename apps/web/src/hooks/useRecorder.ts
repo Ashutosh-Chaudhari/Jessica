@@ -5,7 +5,6 @@ type RecorderError = "unsupported" | "denied" | "unknown";
 interface RecorderState {
   recording: boolean;
   elapsedSeconds: number;
-  audioUrl: string | null;
   error: RecorderError | null;
 }
 
@@ -26,13 +25,11 @@ interface RecorderApi extends RecorderState {
 export function useRecorder(maxSeconds: number): RecorderApi {
   const [recording, setRecording] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<RecorderError | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const urlRef = useRef<string | null>(null);
   const blobRef = useRef<Blob | null>(null);
   const stoppingRef = useRef(false);
   const waitersRef = useRef<((blob: Blob | null) => void)[]>([]);
@@ -46,11 +43,6 @@ export function useRecorder(maxSeconds: number): RecorderApi {
 
   const cleanupAudio = useCallback(() => {
     blobRef.current = null;
-    if (urlRef.current) {
-      URL.revokeObjectURL(urlRef.current);
-      urlRef.current = null;
-      setAudioUrl(null);
-    }
   }, []);
 
   const stop = useCallback((): Promise<Blob | null> => {
@@ -112,8 +104,6 @@ export function useRecorder(maxSeconds: number): RecorderApi {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
         blobRef.current = blob;
-        urlRef.current = URL.createObjectURL(blob);
-        setAudioUrl(urlRef.current);
         stoppingRef.current = false;
         waitersRef.current.splice(0).forEach((resolve) => resolve(blob));
       };
@@ -155,10 +145,9 @@ export function useRecorder(maxSeconds: number): RecorderApi {
         recorderRef.current.stop();
       }
       recorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     },
     [clearTimer],
   );
 
-  return { recording, elapsedSeconds, audioUrl, error, start, stop, reset };
+  return { recording, elapsedSeconds, error, start, stop, reset };
 }

@@ -11,6 +11,9 @@ dist/
 .env.local
 .env.*.local
 
+# Supabase CLI scratch state (version cache, linked-project ref)
+supabase/.temp/
+
 # Editor / OS / local tooling
 .vscode/
 .idea/

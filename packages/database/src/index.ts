@@ -455,16 +455,28 @@ export function createRepository(supabaseUrl: string, serviceRoleKey: string) {
     /* -------------------------------- usage -------------------------------- */
 
     /**
-     * Every provider call made since `sinceIso`, across all users. This is the
-     * number the global daily budget is enforced against.
+     * Claims `calls` against today's budget before they are spent, and reports
+     * whether the day can still afford them. False means nothing was charged.
+     *
+     * A claim rather than a count on purpose: ai_usage rows land after the
+     * response, so counting them lets concurrent requests all read the same
+     * stale total and all pass. The RPC increments one row under its lock.
      */
-    async countUsageSince(sinceIso: string): Promise<number> {
-      const { count, error } = await db
-        .from("ai_usage")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", sinceIso);
-      if (error) throw new Error(`countUsageSince: ${error.message}`);
-      return count ?? 0;
+    async reserveAiCalls(calls: number, budget: number): Promise<boolean> {
+      const { data, error } = await db.rpc("reserve_ai_calls", { p_calls: calls, p_budget: budget });
+      if (error) throw new Error(`reserveAiCalls: ${error.message}`);
+      return data === true;
+    },
+
+    /**
+     * Corrects a claim once the real cost is known: negative hands budget back,
+     * positive charges an overrun. Best-effort, like logUsage - it runs after
+     * the response and must never turn into a failed request.
+     */
+    async settleAiCalls(delta: number): Promise<void> {
+      if (delta === 0) return;
+      const { error } = await db.rpc("settle_ai_calls", { p_delta: delta });
+      if (error) console.error("settleAiCalls failed:", error.message);
     },
 
     /** Spec section 56. Best-effort: quota bookkeeping must never fail a request. */

@@ -83,9 +83,14 @@ export const withContext: MiddlewareHandler<App> = async (c, next) => {
     similarityThreshold: Number(env.SIMILARITY_THRESHOLD) || DEFAULT_SIMILARITY_THRESHOLD,
     dailyBudget:
       env.DAILY_AI_BUDGET === undefined ? DEFAULT_DAILY_BUDGET : Number(env.DAILY_AI_BUDGET),
+    reserved: 0,
     flushUsage: async (userId) => {
       const pending = usage.splice(0);
       await repo.logUsage(userId, pending);
+      // Reconcile the up-front claim with what the request really spent. A
+      // topic served from the shared pool costs nothing, so without this the
+      // budget would drain on requests that never called a provider.
+      if (ctx.reserved > 0) await repo.settleAiCalls(pending.length - ctx.reserved);
     },
   };
 
@@ -115,7 +120,9 @@ export const withContext: MiddlewareHandler<App> = async (c, next) => {
     }
   }
 
-  if (user && usage.length > 0) {
+  // Also runs with nothing buffered when the request claimed budget it did not
+  // spend: that claim still has to be handed back.
+  if (user && (usage.length > 0 || ctx.reserved > 0)) {
     const flush = ctx.flushUsage(user.id).catch((e: unknown) => console.error("usage flush:", e));
     try {
       c.executionCtx.waitUntil(flush);

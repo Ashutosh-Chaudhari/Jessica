@@ -23,7 +23,7 @@ challenges.post("/start", async (c) => {
     // Checked before assigning, not before returning an existing challenge:
     // handing someone a topic they will not be allowed to submit is worse than
     // telling them up front.
-    await enforceDailyBudget(ctx.repo, ctx.dailyBudget);
+    await enforceDailyBudget(ctx);
     await enforceHourlyLimit(ctx.repo, "user_challenges", user.id, HOURLY_LIMITS.start);
     return c.json({ challenge: await assignNewChallenge(ctx, user.id) });
   } catch (error) {
@@ -63,7 +63,7 @@ challenges.post("/:id/submit", async (c) => {
   }
 
   try {
-    await enforceDailyBudget(ctx.repo, ctx.dailyBudget);
+    await enforceDailyBudget(ctx);
     await enforceHourlyLimit(ctx.repo, "attempts", user.id, HOURLY_LIMITS.submit);
     const result = await submitAttempt(
       ctx,
