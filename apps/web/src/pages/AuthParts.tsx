@@ -54,8 +54,41 @@ export function SubmitButton({ busy, label }: { busy: boolean; label: string }) 
   );
 }
 
+/**
+ * Supabase's raw auth errors are terse and sometimes actively misleading - an
+ * unconfirmed account gets "Invalid login credentials", the same text a wrong
+ * password gets. Translate the ones users actually hit into something that says
+ * what to do next; fall through to the original message otherwise.
+ */
+const AUTH_MESSAGES: [RegExp, string][] = [
+  [
+    /invalid login credentials/i,
+    "That email and password don't match. If you just signed up, open the confirmation link we emailed you (check spam) before logging in.",
+  ],
+  [
+    /email not confirmed/i,
+    "Confirm your email first — open the link we sent (it may be in spam), then come back and log in.",
+  ],
+  [
+    /rate limit|you can only request this after|too many requests/i,
+    "Too many sign-ups from here just now. Wait a minute, then try again.",
+  ],
+  [
+    /already registered|already been registered|user already exists/i,
+    "An account with this email already exists. Try logging in instead.",
+  ],
+  [
+    /password.*(least|6 characters|too short)|weak|pwned|known to be/i,
+    "Please choose a longer, less common password — at least 8 characters.",
+  ],
+];
+
 export function handleAuthError(e: unknown): string {
-  return e instanceof Error ? e.message : "Something went wrong. Please try again.";
+  if (!(e instanceof Error)) return "Something went wrong. Please try again.";
+  for (const [pattern, message] of AUTH_MESSAGES) {
+    if (pattern.test(e.message)) return message;
+  }
+  return e.message || "Something went wrong. Please try again.";
 }
 
 export function onSubmitGuard(fn: () => Promise<void>) {
