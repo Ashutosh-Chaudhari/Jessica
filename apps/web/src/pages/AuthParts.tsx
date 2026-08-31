@@ -62,18 +62,24 @@ export function SubmitButton({ busy, label }: { busy: boolean; label: string }) 
  */
 const AUTH_MESSAGES: [RegExp, string][] = [
   [
-    /invalid login credentials/i,
-    "That email and password don't match. If you just signed up, open the confirmation link we emailed you (check spam) before logging in.",
+    // Supabase returns this same text whether the email is unknown or the
+    // password is wrong - deliberately, so no one can probe which emails have
+    // accounts. Keep it combined; naming which half failed would leak that.
+    /invalid login credentials|invalid credentials/i,
+    "Your email or password is incorrect. Check both and try again.",
   ],
   [
+    // Only reachable if email confirmation is turned back on in Supabase.
     /email not confirmed/i,
-    "Confirm your email first — open the link we sent (it may be in spam), then come back and log in.",
+    "Please confirm your email first — open the link we sent you, then log in.",
   ],
   [
     /rate limit|you can only request this after|too many requests/i,
-    "Too many sign-ups from here just now. Wait a minute, then try again.",
+    "Too many attempts from here just now. Wait a minute, then try again.",
   ],
   [
+    // Signup is the safe place to reveal an existing account: the person is
+    // asking to create one, not guessing at someone else's address.
     /already registered|already been registered|user already exists/i,
     "An account with this email already exists. Try logging in instead.",
   ],
