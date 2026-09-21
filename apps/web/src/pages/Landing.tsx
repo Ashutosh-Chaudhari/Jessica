@@ -1,6 +1,6 @@
 import { Suspense, lazy } from "react";
 import { Link } from "react-router";
-import { MAX_RECORDING_SECONDS, DEFAULT_PASS_RULES } from "@jessica/types";
+import { MAX_RECORDING_SECONDS, DURATION_OPTIONS } from "@jessica/types";
 import { Button, Eyebrow, QuoteBlock } from "../components/primitives";
 import { Clock, useLoopingClock } from "../components/Clock";
 import { ThemeCycle } from "../components/ThemeToggle";
@@ -22,7 +22,7 @@ const STEPS = [
   {
     n: "02",
     head: "You talk",
-    body: `Up to ${MAX_RECORDING_SECONDS / 60} minutes, out loud, with nothing written down. At least ${DEFAULT_PASS_RULES.min_duration_seconds} seconds to count.`,
+    body: `You set the clock - ${DURATION_OPTIONS.map((o) => o.label).join(", ")} - then talk, out loud, with nothing written down.`,
   },
   {
     n: "03",

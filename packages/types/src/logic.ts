@@ -28,6 +28,42 @@ export const DEFAULT_PASS_RULES: PassRules = {
   min_transcript_words: 40,
 };
 
+export interface DurationOption {
+  seconds: number;
+  label: string;
+  rules: PassRules;
+}
+
+/**
+ * How long the speaker may talk for, and the bar each length is judged at.
+ * The rules move with the choice - a 30-second answer cannot be held to a
+ * 45-second minimum, and the word count has to fit in the time too.
+ */
+export const DURATION_OPTIONS: DurationOption[] = [
+  {
+    seconds: 30,
+    label: "30 sec",
+    rules: { ...DEFAULT_PASS_RULES, min_duration_seconds: 20, min_transcript_words: 25 },
+  },
+  {
+    seconds: 60,
+    label: "1 min",
+    rules: { ...DEFAULT_PASS_RULES, min_duration_seconds: 35, min_transcript_words: 40 },
+  },
+  { seconds: 120, label: "2 min", rules: DEFAULT_PASS_RULES },
+];
+
+/** The hard ceiling the Worker enforces: the longest length anyone can pick. */
+export const MAX_RECORDING_SECONDS = Math.max(...DURATION_OPTIONS.map((o) => o.seconds));
+
+/**
+ * Unknown lengths fall back to the strictest rules rather than the most
+ * lenient, so a client that sends nothing (or garbage) cannot lower its own bar.
+ */
+export function passRulesFor(maxSeconds: number): PassRules {
+  return DURATION_OPTIONS.find((o) => o.seconds === maxSeconds)?.rules ?? DEFAULT_PASS_RULES;
+}
+
 /* -------------------------------- topics --------------------------------- */
 
 /**
@@ -109,11 +145,19 @@ export function applyPassRules(
   return { passed: true, reason: null };
 }
 
-export const FAIL_MESSAGES: Record<Exclude<FailReason, null>, string> = {
-  too_short: `You spoke for less than ${DEFAULT_PASS_RULES.min_duration_seconds} seconds. Give the topic a fuller answer.`,
-  not_enough_speech: "There was not enough speech to evaluate properly.",
-  off_topic: "Your answer drifted away from the topic.",
-};
+export function failMessage(
+  reason: Exclude<FailReason, null>,
+  rules: PassRules = DEFAULT_PASS_RULES,
+): string {
+  switch (reason) {
+    case "too_short":
+      return `You spoke for less than ${rules.min_duration_seconds} seconds. Give the topic a fuller answer.`;
+    case "not_enough_speech":
+      return "There was not enough speech to evaluate properly.";
+    case "off_topic":
+      return "Your answer drifted away from the topic.";
+  }
+}
 
 /* --------------------------- AI output validation -------------------------- */
 

@@ -99,11 +99,17 @@ const challenges = {
   getCurrent: async (): Promise<ActiveChallenge | null> =>
     (await request<{ challenge: ActiveChallenge | null }>("/challenges/current")).challenge,
 
-  submit: (challengeId: string, audio: Blob, durationSeconds: number) => {
+  submit: (
+    challengeId: string,
+    audio: Blob,
+    durationSeconds: number,
+    maxDurationSeconds: number,
+  ) => {
     const form = new FormData();
     form.append("audio", audio, "speech.webm");
     // The server measures the real duration from the audio; this is only for logs.
     form.append("client_duration_seconds", String(durationSeconds));
+    form.append("max_duration_seconds", String(maxDurationSeconds));
     return request<SubmitChallengeResponse>(`/challenges/${challengeId}/submit`, {
       method: "POST",
       body: form,

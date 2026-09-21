@@ -23,6 +23,8 @@ export interface ChallengeService {
     challengeId: string,
     audio: Blob,
     durationSeconds: number,
+    /** The length the speaker chose; the pass rules scale with it. */
+    maxDurationSeconds: number,
   ): Promise<SubmitChallengeResponse>;
   /** Re-assigns the same topic after a failed attempt (spec section 29). */
   retry(challengeId: string): Promise<StartChallengeResponse>;

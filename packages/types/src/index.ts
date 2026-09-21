@@ -38,7 +38,8 @@ export interface ActiveChallenge extends Challenge {
   user_challenge_id: string;
   assigned_at: string;
   status: UserChallengeStatus;
-  /** Max recording length in seconds (spec section 32). */
+  /** Longest recording the backend will accept (spec section 32). The speaker
+   *  picks their own limit up to this. */
   max_duration_seconds: number;
 }
 
@@ -75,8 +76,6 @@ export interface Attempt {
   status: AttemptStatus;
   created_at: string;
 }
-
-export const MAX_RECORDING_SECONDS = 120;
 
 export type TrendDimension =
   | "fluency"

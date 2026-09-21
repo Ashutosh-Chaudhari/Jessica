@@ -73,7 +73,7 @@ export default function Dashboard() {
       <Slab className="mt-10 p-8 sm:p-12">
         <Eyebrow>Next challenge</Eyebrow>
         <h2 className="display mt-3 text-3xl sm:text-4xl">
-          One topic. Two minutes. No warning.
+          One topic. Your clock. No warning.
         </h2>
         <p className="mt-4 max-w-lg prose-body text-muted">
           You will not know the subject until the clock is on screen. Find somewhere you can

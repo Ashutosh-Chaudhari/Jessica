@@ -3,16 +3,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   DEFAULT_PASS_RULES,
-  FAIL_MESSAGES,
+  DURATION_OPTIONS,
+  MAX_RECORDING_SECONDS,
   applyPassRules,
   computeLongestStreak,
   computeProgress,
   computeTotals,
   computeTrends,
   computeStreak,
+  failMessage,
   isValidTopicText,
   normalizeTopic,
   parseEvaluation,
+  passRulesFor,
   pickCategory,
   type ProgressRow,
 } from "./logic.ts";
@@ -52,7 +55,33 @@ test("applyPassRules: backend decides, not the model (spec sections 38-39)", () 
 
 test("shared constants survive module init (a bundler import cycle once broke this)", () => {
   assert.equal(DEFAULT_PASS_RULES.min_duration_seconds, 45);
-  assert.match(FAIL_MESSAGES.too_short, /45 seconds/);
+  assert.match(failMessage("too_short"), /45 seconds/);
+});
+
+test("the pass bar moves with the length the speaker picked", () => {
+  // The whole point of the shorter options: a 25-second answer has to be able
+  // to pass a 30-second challenge, and still fail a two-minute one.
+  const short = Array.from({ length: 30 }, (_, i) => `word${i}`).join(" ");
+  assert.equal(applyPassRules(25, short, 90, passRulesFor(30)).passed, true);
+  assert.equal(applyPassRules(25, short, 90, passRulesFor(120)).reason, "too_short");
+
+  // Unknown lengths get the strictest rules, never the most lenient.
+  assert.deepEqual(passRulesFor(7), DEFAULT_PASS_RULES);
+  assert.deepEqual(passRulesFor(0), DEFAULT_PASS_RULES);
+
+  // Every option has to be reachable: min duration under the limit, and a word
+  // count that fits in it at a plausible 130 words per minute.
+  for (const option of DURATION_OPTIONS) {
+    assert.ok(option.rules.min_duration_seconds < option.seconds, option.label);
+    assert.ok(
+      option.rules.min_transcript_words <= (option.rules.min_duration_seconds / 60) * 130,
+      option.label,
+    );
+  }
+  // The ceiling the Worker enforces is the longest option, not a separate number.
+  assert.equal(MAX_RECORDING_SECONDS, 120);
+  assert.equal(failMessage("too_short", passRulesFor(30)), failMessage("too_short", passRulesFor(30)));
+  assert.match(failMessage("too_short", passRulesFor(30)), /20 seconds/);
 });
 
 test("parseEvaluation rejects unusable model output and clamps scores", () => {

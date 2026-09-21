@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { ActiveChallenge, SubmitChallengeResponse } from "@jessica/types";
-import { DEFAULT_PASS_RULES, MAX_RECORDING_SECONDS } from "@jessica/types";
+import type { DurationOption } from "@jessica/types";
+import { DURATION_OPTIONS, MAX_RECORDING_SECONDS } from "@jessica/types";
 import { api } from "../services";
 import { Layout } from "../components/Layout";
 import { Button, Eyebrow, Notice, QuoteBlock, Slab } from "../components/primitives";
@@ -17,7 +18,18 @@ export default function Challenge() {
   const [result, setResult] = useState<SubmitChallengeResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const recorder = useRecorder(MAX_RECORDING_SECONDS);
+  // getUserMedia blocks on the browser's permission prompt, which is not modal:
+  // without this the length could still be changed while start() is in flight,
+  // and the recorder would auto-stop on the length it captured rather than the
+  // one the clock and the submit were then reporting.
+  const [starting, setStarting] = useState(false);
+  // The longest option stays the default; the speaker can shorten it before
+  // starting. Holding the whole option, not just the seconds, keeps its label
+  // and its pass rules from drifting apart.
+  const [choice, setChoice] = useState<DurationOption>(
+    () => DURATION_OPTIONS.find((o) => o.seconds === MAX_RECORDING_SECONDS)!,
+  );
+  const recorder = useRecorder(choice.seconds);
   const recordedRef = useRef<{ audio: Blob; durationSeconds: number } | null>(null);
 
   const loadChallenge = useCallback(() => {
@@ -48,10 +60,12 @@ export default function Challenge() {
   }, [result, navigate]);
 
   const startSpeaking = useCallback(async () => {
-    if (!challenge) return;
-    if (!(await recorder.start())) return; // the error slab explains why
-    setPhase("recording");
-  }, [challenge, recorder]);
+    if (!challenge || starting) return;
+    setStarting(true);
+    const ready = await recorder.start();
+    setStarting(false);
+    if (ready) setPhase("recording"); // otherwise the error slab explains why
+  }, [challenge, recorder, starting]);
 
   const send = useCallback(async () => {
     const recorded = recordedRef.current;
@@ -59,19 +73,26 @@ export default function Challenge() {
     setSubmitError(null);
     setPhase("processing");
     try {
-      setResult(await api.challenges.submit(challenge.id, recorded.audio, recorded.durationSeconds));
+      setResult(
+        await api.challenges.submit(
+          challenge.id,
+          recorded.audio,
+          recorded.durationSeconds,
+          choice.seconds,
+        ),
+      );
     } catch (e: unknown) {
       // The recording is still in hand, so offer to send it again rather than
       // dropping the user back onto a microphone that is already switched off.
       setSubmitError(e instanceof Error ? e.message : "Submission failed.");
       setPhase("submitFailed");
     }
-  }, [challenge]);
+  }, [challenge, choice.seconds]);
 
   const finishSpeaking = useCallback(async () => {
     if (!challenge) return;
-    // recorder.elapsedSeconds, not wall clock: after the auto-stop at two
-    // minutes the clock keeps running but the recording does not.
+    // recorder.elapsedSeconds, not wall clock: after the auto-stop at the
+    // chosen limit the clock keeps running but the recording does not.
     const durationSeconds = Math.max(1, recorder.elapsedSeconds);
     setPhase("processing");
 
@@ -93,7 +114,7 @@ export default function Challenge() {
     setPhase("preparing");
   }, [recorder]);
 
-  const remaining = MAX_RECORDING_SECONDS - recorder.elapsedSeconds;
+  const remaining = choice.seconds - recorder.elapsedSeconds;
   const live = phase === "recording";
 
   return (
@@ -136,7 +157,7 @@ export default function Challenge() {
           <div className="scene mt-10">
             <div className="plane origin-left">
               <div className="inline-block border-2 rule bg-surface px-6 py-3 hard-shadow">
-                <Clock seconds={live ? Math.max(0, remaining) : MAX_RECORDING_SECONDS} live={recorder.recording} />
+                <Clock seconds={live ? Math.max(0, remaining) : choice.seconds} live={recorder.recording} />
               </div>
             </div>
           </div>
@@ -147,11 +168,43 @@ export default function Challenge() {
             </p>
           )}
 
+          {phase === "preparing" && (
+            <fieldset className="mt-8">
+              <legend className="font-mono text-sm font-bold uppercase tracking-[0.1em] text-muted">
+                How long do you want?
+              </legend>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {DURATION_OPTIONS.filter((o) => o.seconds <= challenge.max_duration_seconds).map(
+                  (option) => (
+                    <button
+                      key={option.seconds}
+                      type="button"
+                      aria-pressed={choice.seconds === option.seconds}
+                      disabled={starting}
+                      onClick={() => setChoice(option)}
+                      className={`border-2 rule px-5 py-2 font-mono text-sm font-bold uppercase tracking-[0.1em] disabled:cursor-not-allowed disabled:opacity-40 ${
+                        choice.seconds === option.seconds
+                          ? "bg-fg text-bg hard-shadow"
+                          : "bg-surface hover:text-signal-text"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ),
+                )}
+              </div>
+            </fieldset>
+          )}
+
           <div className="mt-10 flex flex-wrap items-center gap-4 border-t-2 rule pt-8">
             {phase === "preparing" ? (
               <>
-                <Button onClick={() => void startSpeaking()} className="px-8 py-4 text-base">
-                  Start speaking
+                <Button
+                  onClick={() => void startSpeaking()}
+                  disabled={starting}
+                  className="px-8 py-4 text-base"
+                >
+                  {starting ? "Waiting for the microphone" : "Start speaking"}
                 </Button>
                 <Button variant="ghost" onClick={() => navigate("/dashboard")}>
                   Not now
@@ -167,8 +220,8 @@ export default function Challenge() {
           {phase === "preparing" && (
             <div className="mt-8 grid gap-6 border-t-2 rule pt-6 sm:grid-cols-2">
               <p className="prose-body text-muted">
-                Speak for at least {DEFAULT_PASS_RULES.min_duration_seconds} seconds and up to{" "}
-                {MAX_RECORDING_SECONDS / 60} minutes. The clock stops itself at the limit.
+                Speak for at least {choice.rules.min_duration_seconds} seconds and up to{" "}
+                {choice.label}. The clock stops itself at the limit.
               </p>
               <p className="prose-body text-muted">
                 Your voice goes to a cloud speech service for transcription, and the transcript

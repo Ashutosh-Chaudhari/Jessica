@@ -1,8 +1,9 @@
 import {
-  FAIL_MESSAGES,
   MAX_RECORDING_SECONDS,
   applyPassRules,
   countWords,
+  failMessage,
+  passRulesFor,
   type Evaluation,
   type SubmitChallengeResponse,
 } from "@jessica/types";
@@ -43,11 +44,16 @@ export async function submitAttempt(
   audio: ArrayBuffer,
   mimeType: string,
   clientDurationSeconds: number,
+  maxDurationSeconds: number,
 ): Promise<SubmitChallengeResponse> {
   const active = await ctx.repo.getActiveChallenge(userId);
   if (!active || active.id !== challengeId) {
     throw new ApiFailure("not_found", "no matching active challenge");
   }
+
+  // The speaker picks how long they get; the bar moves with it. An unknown
+  // value falls back to the strictest rules, so this cannot be gamed downwards.
+  const rules = passRulesFor(maxDurationSeconds);
 
   let providerWorkStarted = false;
 
@@ -76,7 +82,12 @@ export async function submitAttempt(
         : await withRetry(() => ctx.evaluator.evaluate(active.topic_text, transcript.text));
 
     // --- The backend, not the model, decides (spec sections 38-39) --------
-    const { passed, reason } = applyPassRules(durationSeconds, transcript.text, evaluation.relevance);
+    const { passed, reason } = applyPassRules(
+      durationSeconds,
+      transcript.text,
+      evaluation.relevance,
+      rules,
+    );
 
     const attempt = await ctx.repo.insertAttempt({
       user_id: userId,
@@ -101,7 +112,7 @@ export async function submitAttempt(
     const result: Evaluation = {
       ...evaluation,
       passed,
-      fail_reason: reason ? FAIL_MESSAGES[reason] : null,
+      fail_reason: reason ? failMessage(reason, rules) : null,
     };
     return { attempt, evaluation: result };
   } catch (error) {

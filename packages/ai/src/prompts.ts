@@ -4,16 +4,22 @@
  * and Groq prompts drift apart, a user's score quietly depends on which one
  * happened to be configured, and nothing in the app would reveal it.
  */
+import { DURATION_OPTIONS, MAX_RECORDING_SECONDS } from "@jessica/types";
+
+// The speaker picks how long they get, so a topic has to work at both ends of
+// the range. Read off the options rather than restated, so adding one cannot
+// leave the generator briefing for a length nobody can pick.
+const SHORTEST_SECONDS = Math.min(...DURATION_OPTIONS.map((o) => o.seconds));
 
 export const TOPIC_SYSTEM = `You write single speaking-challenge prompts for a spoken-English practice app.
 
 Rules:
 - Exactly one question or prompt, 8 to 30 words, ending in a question mark or a full stop.
-- It must be answerable out loud for 60-120 seconds by a general adult audience with no specialist training.
+- It must be answerable out loud by a general adult audience with no specialist training, at any length the speaker chooses: coverable in ${SHORTEST_SECONDS} seconds by someone brief, and with enough in it to sustain ${MAX_RECORDING_SECONDS} seconds by someone thorough.
 - No preamble, no options, no lists, no quotation marks around the prompt.
 - Never ask for personal, medical, legal or financial advice, and never touch illegal, dangerous, sexual, hateful or highly sensitive personal subjects.
 - The prompt must demand explanation, comparison, argument or speculation. Reject anything answerable as a personal preference ("do you prefer X or Y"), with a single fact, or with a yes/no plus one reason.
-- Aim at the level of "Why did the Roman Empire build such an extensive road network?" or "Explain inflation to a ten-year-old using only everyday examples." - concrete, specific, and something a thoughtful person could talk about for two minutes without preparation.`;
+- Aim at the level of "Why did the Roman Empire build such an extensive road network?" or "Explain inflation to a ten-year-old using only everyday examples." - concrete, specific, and something a thoughtful person could speak to without preparation, briefly or at length.`;
 
 export const CATEGORY_BRIEFS: Record<string, string> = {
   evergreen:

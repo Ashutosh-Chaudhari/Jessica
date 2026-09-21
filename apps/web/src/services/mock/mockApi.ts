@@ -12,12 +12,13 @@ import type {
   SubmitChallengeResponse,
 } from "@jessica/types";
 import {
-  FAIL_MESSAGES,
   FALLBACK_TOPICS,
   MAX_RECORDING_SECONDS,
   applyPassRules,
   computeProgress,
   computeTotals,
+  failMessage,
+  passRulesFor,
 } from "@jessica/types";
 import type { JessicaApi } from "../api";
 import { MOCK_FEEDBACK_GOOD, MOCK_FEEDBACK_IMPROVE, MOCK_TRANSCRIPTS } from "./data";
@@ -35,20 +36,22 @@ function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function mockTranscript(durationSeconds: number): string {
-  if (durationSeconds < 45) {
+function mockTranscript(durationSeconds: number, minSeconds: number): string {
+  if (durationSeconds < minSeconds) {
     return "I think this topic is interesting but I am not sure what to say about it.";
   }
-  return durationSeconds > 80 ? MOCK_TRANSCRIPTS[0]! : MOCK_TRANSCRIPTS[1]!;
+  return durationSeconds > minSeconds * 1.8 ? MOCK_TRANSCRIPTS[0]! : MOCK_TRANSCRIPTS[1]!;
 }
 
 function mockEvaluate(
   challenge: Challenge,
   durationSeconds: number,
+  maxDurationSeconds: number,
 ): SubmitChallengeResponse {
-  const transcript = mockTranscript(durationSeconds);
-  // Longer, on-topic answers score higher in the prototype.
-  const base = Math.min(95, 45 + Math.round((durationSeconds / MAX_RECORDING_SECONDS) * 50));
+  const rules = passRulesFor(maxDurationSeconds);
+  const transcript = mockTranscript(durationSeconds, rules.min_duration_seconds);
+  // Filling your chosen time scores higher in the prototype, whichever you picked.
+  const base = Math.min(95, 45 + Math.round((durationSeconds / maxDurationSeconds) * 50));
   const jitter = () => Math.max(30, Math.min(98, base + Math.floor(Math.random() * 17) - 8));
   const relevance = jitter();
   const fluency = jitter();
@@ -58,7 +61,7 @@ function mockEvaluate(
   const overall = Math.round((fluency + coherence + vocabulary + relevance + structure) / 5);
 
   // Same deterministic rules the Worker applies (spec sections 38-39).
-  const { passed, reason } = applyPassRules(durationSeconds, transcript, relevance);
+  const { passed, reason } = applyPassRules(durationSeconds, transcript, relevance, rules);
 
   const good = [...MOCK_FEEDBACK_GOOD].sort(() => Math.random() - 0.5).slice(0, 2);
   const improve = [...MOCK_FEEDBACK_IMPROVE].sort(() => Math.random() - 0.5).slice(0, 2);
@@ -73,7 +76,7 @@ function mockEvaluate(
     filler_count: Math.max(0, Math.round((100 - fluency) / 4)),
     feedback: [...good, ...improve],
     passed,
-    fail_reason: reason ? FAIL_MESSAGES[reason] : null,
+    fail_reason: reason ? failMessage(reason, rules) : null,
   };
 
   const status: AttemptStatus = passed ? "passed" : "failed";
@@ -175,13 +178,14 @@ const challenges = {
     challengeId: string,
     _audio: Blob,
     durationSeconds: number,
+    maxDurationSeconds: number,
   ): Promise<SubmitChallengeResponse> {
     const active = mockStore.getActiveChallenge();
     if (!active || active.id !== challengeId) {
       throw new Error("No active challenge to submit.");
     }
     await delay(2200); // simulate STT + evaluation pipeline
-    const result = mockEvaluate(active, durationSeconds);
+    const result = mockEvaluate(active, durationSeconds, maxDurationSeconds);
     mockStore.saveAttempt(result.attempt);
     if (result.evaluation.passed) {
       mockStore.setActiveChallenge(null); // completed -> history (spec section 30)

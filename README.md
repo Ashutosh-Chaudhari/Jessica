@@ -2,7 +2,7 @@
 
 # Jessica — The Communicator
 
-### One unexpected topic. Two minutes. No script.
+### One unexpected topic. Your clock. No script.
 
 **[▶ Try it live](https://jessica.ashutoshc.workers.dev)**
 
@@ -16,7 +16,8 @@
 ![The landing page: a countdown clock set into the headline](docs/screenshots/hero.png)
 
 A speaking-practice app that hands you a topic you did not choose, starts a
-two-minute clock, and tells you how clearly you were actually understood.
+clock you did — thirty seconds, one minute or two — and tells you how clearly
+you were actually understood.
 
 You cannot prepare for it. That is the point — the skill being trained is
 thinking and speaking under pressure, not rehearsing an answer.
@@ -26,7 +27,8 @@ thinking and speaking under pressure, not rehearsing an answer.
 Topics are never repeated, and not just as strings: a new topic is embedded and
 compared against everything you have already passed, so you never get a
 paraphrase of a subject you have done. Pass or fail is decided by the backend,
-never by the model — the model measures, the application judges.
+never by the model — the model measures, the application judges, against a bar
+that moves with the length you picked.
 
 ![The dashboard, with stats and the start button](docs/screenshots/dashboard.png)
 

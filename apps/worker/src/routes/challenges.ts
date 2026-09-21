@@ -51,6 +51,7 @@ challenges.post("/:id/submit", async (c) => {
 
   let audio: File;
   let clientDuration = 0;
+  let maxDuration = 0;
   try {
     const form = await c.req.formData();
     const field = form.get("audio");
@@ -58,6 +59,9 @@ challenges.post("/:id/submit", async (c) => {
     if (field.size > MAX_AUDIO_BYTES) return fail(c, "audio_too_large", field.size);
     audio = field;
     clientDuration = Number(form.get("client_duration_seconds")) || 0;
+    // Which length the speaker chose. Unrecognised values get the strictest
+    // rules, so there is nothing to gain by lying about it.
+    maxDuration = Number(form.get("max_duration_seconds")) || 0;
   } catch (error) {
     return fail(c, "invalid_request", error);
   }
@@ -72,6 +76,7 @@ challenges.post("/:id/submit", async (c) => {
       await audio.arrayBuffer(),
       audio.type || "audio/webm",
       clientDuration,
+      maxDuration,
     );
     return c.json(result);
   } catch (error) {
