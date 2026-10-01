@@ -307,16 +307,38 @@ export function createRepository(supabaseUrl: string, serviceRoleKey: string) {
       if (error) throw new Error(`setChallengeStatus: ${error.message}`);
     },
 
-    /** Topic texts to steer the generator away from (spec section 16). */
-    async recentPassedTopics(userId: string, limit: number): Promise<string[]> {
+    /**
+     * Marks the moment the speaker opened the microphone. Write-once - a
+     * re-record after a failed send must not move the timestamp, and the
+     * caller treats this as fire-and-forget, so it never fails a request.
+     */
+    async markChallengeStarted(userChallengeId: string): Promise<void> {
+      const { error } = await db
+        .from("user_challenges")
+        .update({ started_at: new Date().toISOString() })
+        .eq("id", userChallengeId)
+        .is("started_at", null);
+      if (error) console.error("markChallengeStarted failed:", error.message);
+    },
+
+    /**
+     * Topic texts to steer the generator away from (spec section 16).
+     *
+     * Skipped topics count as well as passed ones. They are not duplicates -
+     * is_duplicate_for_user still only rejects against passes, so a skipped
+     * subject may legitimately come back later - but re-offering the exact
+     * thing somebody just rejected is the one outcome a skip must not produce,
+     * and an attempt spent generating it is an attempt wasted.
+     */
+    async recentTopicsToAvoid(userId: string, limit: number): Promise<string[]> {
       const { data, error } = await db
         .from("user_challenges")
         .select("completed_at, challenges(topic_text)")
         .eq("user_id", userId)
-        .eq("status", "passed")
+        .in("status", ["passed", "skipped"])
         .order("completed_at", { ascending: false })
         .limit(limit);
-      if (error) throw new Error(`recentPassedTopics: ${error.message}`);
+      if (error) throw new Error(`recentTopicsToAvoid: ${error.message}`);
       return ((data ?? []) as unknown as { challenges: { topic_text: string } | null }[])
         .map((r) => r.challenges?.topic_text)
         .filter((t): t is string => Boolean(t));

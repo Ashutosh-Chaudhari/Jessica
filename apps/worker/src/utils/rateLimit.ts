@@ -1,9 +1,18 @@
 import type { Repository } from "@jessica/database";
 import { ApiFailure } from "./failure.ts";
 
-/** Spec section 55. Tune after real usage; these protect the free AI quotas. */
+/**
+ * Spec section 55. Tune after real usage; these protect the free AI quotas.
+ *
+ * `start` counts assignments, and skipping is an assignment: browsing for a
+ * topic worth speaking about now spends from this bucket. At 10 a speaker who
+ * turned down a few subjects would be refused the one they finally wanted -
+ * trapping the user to protect quota, which is the wrong trade when the actual
+ * provider spend is already held atomically by enforceDailyBudget, and when a
+ * reassignment is usually served from the shared pool for nothing.
+ */
 export const HOURLY_LIMITS = {
-  start: 10,
+  start: 30,
   submit: 10,
 } as const;
 

@@ -17,10 +17,20 @@ const app = new Hono<App>();
  *
  * 308 rather than 301: it preserves the method and body, so a POST that
  * arrives over HTTP is retried correctly instead of silently becoming a GET.
+ *
+ * Exempting the loopback hosts is what keeps `wrangler dev` usable. It serves
+ * plain HTTP, and its proxy rewrites an https Location back to http, so the
+ * redirect lands on the URL it just came from - an infinite loop that makes
+ * the whole local API unreachable. Nothing is given up: the deployed Worker is
+ * only ever addressed by its own hostname, and a request that reached it
+ * claiming Host: localhost would be skipping a redirect issued for its own
+ * protection anyway.
  */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
 app.use("*", async (c, next) => {
   const url = new URL(c.req.url);
-  if (url.protocol === "http:") {
+  if (url.protocol === "http:" && !LOOPBACK_HOSTS.has(url.hostname)) {
     url.protocol = "https:";
     return c.redirect(url.toString(), 308);
   }

@@ -105,6 +105,34 @@ export const CATEGORY_WEIGHTS: Record<ChallengeCategory, number> = {
   future_scenarios: 5,
 };
 
+/**
+ * What a category is called when the speaker picks one themselves. The weights
+ * above stay hidden (spec section 21) - choosing a subject is not the same as
+ * being shown the odds.
+ */
+export const CATEGORY_LABELS: Record<ChallengeCategory, string> = {
+  evergreen: "Everyday",
+  science_technology: "Science & tech",
+  history: "History",
+  business_economics: "Business",
+  culture_geography: "Culture",
+  current_trends: "Trends",
+  future_scenarios: "Future",
+};
+
+/**
+ * Guard for anything arriving from a client: a query string, a stored value,
+ * an LLM's idea of a category.
+ *
+ * hasOwn rather than `in`: `in` walks the prototype chain, so "toString" and
+ * "constructor" would both pass and then be used as a real category - stored
+ * on the row, and looked up in CATEGORY_BRIEFS, where the hit is an inherited
+ * function rather than the intended brief.
+ */
+export function isChallengeCategory(value: unknown): value is ChallengeCategory {
+  return typeof value === "string" && Object.hasOwn(CATEGORY_WEIGHTS, value);
+}
+
 /** `roll` is a number in [0, 1). */
 export function pickCategory(roll: number): ChallengeCategory {
   const entries = Object.entries(CATEGORY_WEIGHTS) as [ChallengeCategory, number][];

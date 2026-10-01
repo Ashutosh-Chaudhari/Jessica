@@ -1,7 +1,7 @@
 import {
-  CATEGORY_WEIGHTS,
   FALLBACK_TOPICS,
   MAX_RECORDING_SECONDS,
+  isChallengeCategory,
   isValidTopicText,
   normalizeTopic,
   pickCategory,
@@ -28,10 +28,6 @@ const CONTEXT_HEADLINES = 12;
 
 /** Below this, the cache is too thin to be worth using instead of refetching. */
 const MIN_CACHED_HEADLINES = 5;
-
-function isCategory(value: string): value is ChallengeCategory {
-  return value in CATEGORY_WEIGHTS;
-}
 
 function expiryFor(category: ChallengeCategory): string | null {
   if (category !== "current_trends") return null;
@@ -137,9 +133,14 @@ export function withLimits(challenge: ActiveChallenge): ActiveChallenge {
 export async function assignNewChallenge(
   ctx: RequestContext,
   userId: string,
+  /** What the speaker asked for. Anything unrecognised is treated as no
+   *  preference rather than rejected: a stale or hand-edited category must not
+   *  be able to turn "give me a topic" into an error. */
+  requestedCategory?: string | null,
 ): Promise<ActiveChallenge> {
+  const chosen = isChallengeCategory(requestedCategory) ? requestedCategory : null;
   try {
-    return await generateAndAssign(ctx, userId);
+    return await generateAndAssign(ctx, userId, chosen);
   } catch (error) {
     if (!(error instanceof LostRace)) throw error;
     // Two overlapping /start calls - React StrictMode does this on every dev
@@ -153,11 +154,16 @@ export async function assignNewChallenge(
 async function generateAndAssign(
   ctx: RequestContext,
   userId: string,
+  chosen: ChallengeCategory | null,
 ): Promise<ActiveChallenge> {
-  const category = pickCategory(Math.random());
+  const category = chosen ?? pickCategory(Math.random());
 
   // 1. Free path (spec sections 64-65).
-  for (const filter of [category, null]) {
+  //
+  // The `null` pass is "any category will do", which is only true when nobody
+  // asked for one. A speaker who picked Science and got History would have no
+  // way to tell the difference from the feature being broken.
+  for (const filter of chosen ? [chosen] : [category, null]) {
     const pooled = await ctx.repo.pickUnseenChallenge(userId, filter, ctx.similarityThreshold);
     if (!pooled) continue;
     const active = await activate(ctx, userId, pooled);
@@ -165,7 +171,7 @@ async function generateAndAssign(
   }
 
   // 2. Generate (spec sections 22-26).
-  const avoidTopics = await ctx.repo.recentPassedTopics(userId, 20);
+  const avoidTopics = await ctx.repo.recentTopicsToAvoid(userId, 20);
 
   // Only current-trend topics pay for retrieval (spec section 20, level 1).
   const current =
@@ -185,7 +191,7 @@ async function generateAndAssign(
         }),
       );
       topicText = generated.topicText;
-      topicCategory = isCategory(generated.category) ? generated.category : category;
+      topicCategory = isChallengeCategory(generated.category) ? generated.category : category;
     } catch (error) {
       console.error("topic generation unavailable, falling back:", error);
       break; // spec section 27: do not keep hammering a provider that is down
@@ -222,19 +228,26 @@ async function generateAndAssign(
   }
 
   // 3. Last resort (spec section 27).
-  return assignFallbackChallenge(ctx, userId);
+  return assignFallbackChallenge(ctx, userId, chosen);
 }
 
 async function assignFallbackChallenge(
   ctx: RequestContext,
   userId: string,
+  chosen: ChallengeCategory | null,
 ): Promise<ActiveChallenge> {
   // ponytail: linear walk over ~20 seeds, one round trip each. Only reached
   // when Gemini is down AND the pool is exhausted for this user; if that stops
   // being rare, do it as a single "unseen fallback" query instead.
   const shuffled = [...FALLBACK_TOPICS].sort(() => Math.random() - 0.5);
+  // A preference orders this list, it does not filter it: there are only a
+  // couple of seeds per category, and handing back no topic at all is a worse
+  // answer to "I'd like a history one" than handing back a different subject.
+  const ordered = chosen
+    ? [...shuffled.filter((s) => s.category === chosen), ...shuffled.filter((s) => s.category !== chosen)]
+    : shuffled;
 
-  for (const seed of shuffled) {
+  for (const seed of ordered) {
     const challenge = await ctx.repo.upsertChallenge({
       topic_text: seed.text,
       topic_key: normalizeTopic(seed.text),

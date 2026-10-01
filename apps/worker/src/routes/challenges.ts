@@ -12,6 +12,12 @@ export const challenges = new Hono<App>();
  * Spec section 47. A live challenge is always returned as-is: refreshing the
  * page must never consume a topic (spec section 31), and it must not count
  * against the rate limit either.
+ *
+ * ?category=<ChallengeCategory> asks for a subject instead of letting Jessica
+ * roll for one. It only applies when a topic is actually being assigned - a
+ * live challenge still wins, so changing subject means skipping first, which is
+ * exactly what the client does. Unknown values mean "no preference"; see
+ * assignNewChallenge.
  */
 challenges.post("/start", async (c) => {
   const ctx = c.get("ctx");
@@ -25,7 +31,7 @@ challenges.post("/start", async (c) => {
     // telling them up front.
     await enforceDailyBudget(ctx, MAX_CALLS.start);
     await enforceHourlyLimit(ctx.repo, "user_challenges", user.id, HOURLY_LIMITS.start);
-    return c.json({ challenge: await assignNewChallenge(ctx, user.id) });
+    return c.json({ challenge: await assignNewChallenge(ctx, user.id, c.req.query("category")) });
   } catch (error) {
     return failFromError(c, error);
   }
@@ -102,7 +108,33 @@ challenges.post("/:id/retry", async (c) => {
   }
 });
 
-/** Give up on this topic without passing it; the next start generates a new one. */
+/**
+ * Records that the speaker opened the microphone, which is the only one of the
+ * four topic states nothing else writes. Idempotent, unmetered and deliberately
+ * trivial: the client fires it alongside getUserMedia and never waits for it,
+ * so it must not be able to delay or break starting to speak.
+ */
+challenges.post("/:id/started", async (c) => {
+  const ctx = c.get("ctx");
+  try {
+    const active = await ctx.repo.getActiveChallenge(c.get("user").id);
+    if (!active || active.id !== c.req.param("id")) return fail(c, "not_found");
+    await ctx.repo.markChallengeStarted(active.user_challenge_id);
+    return c.json({ ok: true });
+  } catch (error) {
+    return failFromError(c, error);
+  }
+});
+
+/**
+ * Give up on this topic without passing it; the next start assigns a new one.
+ *
+ * A skip is an ordinary choice, not a failure, and it stays that way by writing
+ * nothing except the status: no attempts row, so nothing here reaches a score,
+ * a streak or the history. Both uniqueness rules on user_challenges then keep
+ * the replacement honest - the skipped challenge can never be assigned to this
+ * user again, so "give me another one" cannot return the same topic.
+ */
 challenges.post("/:id/skip", async (c) => {
   const ctx = c.get("ctx");
   try {

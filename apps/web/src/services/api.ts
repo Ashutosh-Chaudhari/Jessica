@@ -1,6 +1,7 @@
 import type {
   ActiveChallenge,
   AuthUser,
+  ChallengeCategory,
   HistoryEntry,
   ProgressStats,
   SignupResult,
@@ -16,8 +17,12 @@ export interface AuthService {
 }
 
 export interface ChallengeService {
-  /** Returns the active challenge if one exists, otherwise generates a new one. */
-  start(): Promise<StartChallengeResponse>;
+  /**
+   * Returns the active challenge if one exists, otherwise generates a new one.
+   * `category` is a preference for the new topic and is ignored when something
+   * is already live - to change subject, skip first.
+   */
+  start(category?: ChallengeCategory): Promise<StartChallengeResponse>;
   getCurrent(): Promise<ActiveChallenge | null>;
   submit(
     challengeId: string,
@@ -30,6 +35,8 @@ export interface ChallengeService {
   retry(challengeId: string): Promise<StartChallengeResponse>;
   /** Abandons the topic so the next start generates a different one. */
   skip(challengeId: string): Promise<void>;
+  /** Fire-and-forget: records that the microphone was opened for this topic. */
+  markStarted(challengeId: string): Promise<void>;
 }
 
 export interface ProfileService {

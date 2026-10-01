@@ -4,6 +4,7 @@ const KEYS = {
   users: "jessica.mock.users",
   session: "jessica.mock.session",
   active: "jessica.mock.activeChallenge",
+  skipped: "jessica.mock.skippedTopics",
   attempts: "jessica.mock.attempts",
 } as const;
 
@@ -51,6 +52,19 @@ export const mockStore = {
   setActiveChallenge(challenge: ActiveChallenge | null): void {
     if (challenge) write(KEYS.active, challenge);
     else localStorage.removeItem(KEYS.active);
+  },
+
+  /**
+   * The last few topics turned down, so a replacement is never the topic just
+   * skipped. Bounded on purpose: there are only twenty seeds here, and a list
+   * that grew forever would run the prototype out of topics rather than let an
+   * old skip come round again.
+   */
+  getSkippedTopics(): string[] {
+    return read<string[]>(KEYS.skipped, []);
+  },
+  addSkippedTopic(topicText: string): void {
+    write(KEYS.skipped, [topicText, ...this.getSkippedTopics().filter((t) => t !== topicText)].slice(0, 10));
   },
 
   getAttempts(): Attempt[] {

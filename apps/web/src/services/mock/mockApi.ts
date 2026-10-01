@@ -4,6 +4,7 @@ import type {
   AttemptStatus,
   AuthUser,
   Challenge,
+  ChallengeCategory,
   Evaluation,
   HistoryEntry,
   ProgressStats,
@@ -101,17 +102,23 @@ function mockEvaluate(
   return { attempt, evaluation };
 }
 
-function assignTopic(): StartChallengeResponse {
+function assignTopic(category?: ChallengeCategory): StartChallengeResponse {
   const usedTexts = new Set(
     mockStore
       .getAttempts()
       .filter((a) => a.status === "passed")
       .map((a) => a.topic_text),
   );
-  // Prototype uniqueness: avoid topics this user already passed. The real
-  // engine also does semantic matching (spec section 22).
-  const pool = FALLBACK_TOPICS.filter((t) => !usedTexts.has(t.text));
-  const chosen = pool.length > 0 ? pick(pool) : pick(FALLBACK_TOPICS);
+  // Prototype uniqueness: avoid topics this user already passed, and never
+  // hand back the one just skipped. The real engine also does semantic
+  // matching (spec section 22) and has a far larger pool than these seeds.
+  const skipped = mockStore.getSkippedTopics();
+  const subject = category ? FALLBACK_TOPICS.filter((t) => t.category === category) : FALLBACK_TOPICS;
+  // A subject the seeds barely cover still has to produce something.
+  const inSubject = subject.length > 0 ? subject : FALLBACK_TOPICS;
+  const fresh = inSubject.filter((t) => !usedTexts.has(t.text) && !skipped.includes(t.text));
+  const unskipped = inSubject.filter((t) => !skipped.includes(t.text));
+  const chosen = pick(fresh.length > 0 ? fresh : unskipped.length > 0 ? unskipped : inSubject);
 
   const challenge: ActiveChallenge = {
     id: uid(),
@@ -161,15 +168,16 @@ const auth = {
 };
 
 const challenges = {
-  async start(): Promise<StartChallengeResponse> {
+  async start(category?: ChallengeCategory): Promise<StartChallengeResponse> {
     await delay(900); // simulate topic generation latency
     const existing = mockStore.getActiveChallenge();
     // Refresh rule (section 31): keep the active challenge. A failed topic
-    // also stays active until passed or explicitly skipped (section 29).
+    // also stays active until passed or explicitly skipped (section 29). The
+    // requested category applies to a NEW topic only, exactly as on the Worker.
     if (existing && (existing.status === "assigned" || existing.status === "failed")) {
       return { challenge: existing };
     }
-    return assignTopic();
+    return assignTopic(category);
   },
   async getCurrent(): Promise<ActiveChallenge | null> {
     return mockStore.getActiveChallenge();
@@ -209,7 +217,16 @@ const challenges = {
     if (!active || active.id !== challengeId) {
       throw new Error("That is no longer available."); // matches the Worker's 404
     }
+    // Remembered, not just dropped: the Worker cannot re-assign a skipped
+    // challenge because of unique (user_id, challenge_id), and the mock has to
+    // honour the same promise from a pool of twenty seeds.
+    mockStore.addSkippedTopic(active.topic_text);
     mockStore.setActiveChallenge(null);
+  },
+
+  async markStarted(): Promise<void> {
+    // Nothing reads started_at in the prototype; the real backend records it
+    // for the shown/started/completed/skipped breakdown.
   },
 };
 

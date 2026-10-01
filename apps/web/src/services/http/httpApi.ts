@@ -4,6 +4,7 @@ import {
   type ActiveChallenge,
   type ApiError,
   type AuthUser,
+  type ChallengeCategory,
   type HistoryEntry,
   type ProgressStats,
   type SignupResult,
@@ -94,7 +95,11 @@ const auth = {
 };
 
 const challenges = {
-  start: () => request<StartChallengeResponse>("/challenges/start", { method: "POST" }),
+  start: (category?: ChallengeCategory) =>
+    request<StartChallengeResponse>(
+      `/challenges/start${category ? `?category=${encodeURIComponent(category)}` : ""}`,
+      { method: "POST" },
+    ),
 
   getCurrent: async (): Promise<ActiveChallenge | null> =>
     (await request<{ challenge: ActiveChallenge | null }>("/challenges/current")).challenge,
@@ -121,6 +126,10 @@ const challenges = {
 
   skip: async (challengeId: string): Promise<void> => {
     await request(`/challenges/${challengeId}/skip`, { method: "POST" });
+  },
+
+  markStarted: async (challengeId: string): Promise<void> => {
+    await request(`/challenges/${challengeId}/started`, { method: "POST" });
   },
 };
 

@@ -2,6 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  CATEGORY_LABELS,
+  CATEGORY_WEIGHTS,
   DEFAULT_PASS_RULES,
   DURATION_OPTIONS,
   MAX_RECORDING_SECONDS,
@@ -12,6 +14,7 @@ import {
   computeTrends,
   computeStreak,
   failMessage,
+  isChallengeCategory,
   isValidTopicText,
   normalizeTopic,
   parseEvaluation,
@@ -33,6 +36,23 @@ test("isValidTopicText rejects junk and preambles", () => {
   assert.equal(isValidTopicText("Talk."), false);
   assert.equal(isValidTopicText("Sure! Here is a topic about the Roman Empire and its roads."), false);
   assert.equal(isValidTopicText("Explain roads.\nAlso mention bridges please."), false);
+});
+
+test("every category a user can pick has a label and is accepted", () => {
+  // A category added to the weights but not the labels would render as a blank
+  // chip; one the guard rejected would silently fall back to a random subject.
+  for (const category of Object.keys(CATEGORY_WEIGHTS)) {
+    assert.ok(CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS], `no label for ${category}`);
+    assert.ok(isChallengeCategory(category), `guard rejects ${category}`);
+  }
+  assert.equal(Object.keys(CATEGORY_LABELS).length, Object.keys(CATEGORY_WEIGHTS).length);
+});
+
+test("isChallengeCategory rejects anything a client could invent", () => {
+  assert.equal(isChallengeCategory("random"), false); // the UI's "no preference"
+  assert.equal(isChallengeCategory("politics"), false);
+  assert.equal(isChallengeCategory(undefined), false);
+  assert.equal(isChallengeCategory("toString"), false); // inherited, not a category
 });
 
 test("pickCategory follows the spec section 21 distribution", () => {

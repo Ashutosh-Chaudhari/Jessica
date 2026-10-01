@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import type { ActiveChallenge, SubmitChallengeResponse } from "@jessica/types";
+import type { ActiveChallenge, ChallengeCategory, SubmitChallengeResponse } from "@jessica/types";
 import type { DurationOption } from "@jessica/types";
-import { DURATION_OPTIONS, MAX_RECORDING_SECONDS } from "@jessica/types";
+import { CATEGORY_LABELS, DURATION_OPTIONS, MAX_RECORDING_SECONDS } from "@jessica/types";
 import { api } from "../services";
 import { Layout } from "../components/Layout";
 import { Button, Eyebrow, Notice, QuoteBlock, Slab } from "../components/primitives";
@@ -10,6 +10,20 @@ import { Clock, LiveLamp } from "../components/Clock";
 import { useRecorder } from "../hooks/useRecorder";
 
 type Phase = "generating" | "loadFailed" | "preparing" | "recording" | "processing" | "submitFailed";
+
+/** "random" is Jessica's own pick - the original experience, and the default. */
+type Subject = ChallengeCategory | "random";
+
+const SUBJECTS: { value: Subject; label: string }[] = [
+  { value: "random", label: "Surprise me" },
+  ...(Object.keys(CATEGORY_LABELS) as ChallengeCategory[]).map((value) => ({
+    value,
+    label: CATEGORY_LABELS[value],
+  })),
+];
+
+const CHIP =
+  "border-2 rule px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.1em] disabled:cursor-not-allowed disabled:opacity-40";
 
 export default function Challenge() {
   const navigate = useNavigate();
@@ -29,42 +43,74 @@ export default function Challenge() {
   const [choice, setChoice] = useState<DurationOption>(
     () => DURATION_OPTIONS.find((o) => o.seconds === MAX_RECORDING_SECONDS)!,
   );
+  // Which subject the next topic should come from. Purely a preference for
+  // what gets assigned next - it is not sent again once a topic is on screen.
+  const [subject, setSubject] = useState<Subject>("random");
   const recorder = useRecorder(choice.seconds);
   const recordedRef = useRef<{ audio: Blob; durationSeconds: number } | null>(null);
 
-  const loadChallenge = useCallback(() => {
+  /**
+   * Put a topic on screen. `abandonId` turns it into a skip: the shown topic is
+   * recorded as skipped first, which is what frees the slot for a new one and
+   * what guarantees the replacement is a different topic - the backend can
+   * never re-assign a challenge this user has already been given.
+   *
+   * Both halves are one phase change, so skipping is one click and one loading
+   * state, with no reload and no confirmation.
+   */
+  const loadChallenge = useCallback(async (want: Subject, abandonId?: string) => {
     setPhase("generating");
     setLoadError(null);
-    return api.challenges
-      .start()
-      .then((res) => {
-        setChallenge(res.challenge);
-        setPhase("preparing");
-        return true;
-      })
-      .catch((e: unknown) => {
-        // Without this the page sits on "finding you a topic" forever.
-        setLoadError(e instanceof Error ? e.message : "Could not start a challenge.");
-        setPhase("loadFailed");
-        return false;
-      });
+    try {
+      if (abandonId) await api.challenges.skip(abandonId);
+      const res = await api.challenges.start(want === "random" ? undefined : want);
+      setChallenge(res.challenge);
+      setPhase("preparing");
+    } catch (e: unknown) {
+      // Without this the page sits on "finding you a topic" forever.
+      setLoadError(e instanceof Error ? e.message : "Could not start a challenge.");
+      setPhase("loadFailed");
+    }
   }, []);
 
   useEffect(() => {
     document.title = "Challenge - Jessica";
-    void loadChallenge();
+    void loadChallenge("random");
   }, [loadChallenge]);
 
   useEffect(() => {
     if (result) navigate(`/result/${result.attempt.id}`, { state: result });
   }, [result, navigate]);
 
+  /** Not interested - take this one away and bring another. No penalty, no prompt. */
+  const skipTopic = useCallback(() => {
+    if (challenge) void loadChallenge(subject, challenge.id);
+  }, [challenge, loadChallenge, subject]);
+
+  /** Picking a subject is also a rejection of what is on screen, so it skips too. */
+  const chooseSubject = useCallback(
+    (want: Subject) => {
+      if (want === subject) return;
+      setSubject(want);
+      void loadChallenge(want, challenge?.id);
+    },
+    [challenge, loadChallenge, subject],
+  );
+
   const startSpeaking = useCallback(async () => {
     if (!challenge || starting) return;
     setStarting(true);
     const ready = await recorder.start();
     setStarting(false);
-    if (ready) setPhase("recording"); // otherwise the error slab explains why
+    if (!ready) return; // the error slab explains why
+
+    // Fire-and-forget, and only once the recorder is actually running. A
+    // refused microphone is not a started topic - recording it as one would
+    // put "they opened it and gave up" into the personalisation data when the
+    // speaker never got the chance. Not awaited either way: this must not sit
+    // between the permission prompt and the clock, nor fail the attempt.
+    void api.challenges.markStarted(challenge.id).catch(() => {});
+    setPhase("recording");
   }, [challenge, recorder, starting]);
 
   const send = useCallback(async () => {
@@ -134,7 +180,7 @@ export default function Challenge() {
           <Eyebrow>Could not start</Eyebrow>
           <p className="mt-4 font-sans text-base">{loadError}</p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Button onClick={() => void loadChallenge()}>Try again</Button>
+            <Button onClick={() => void loadChallenge(subject)}>Try again</Button>
             <Button variant="ghost" onClick={() => navigate("/dashboard")}>
               Back to dashboard
             </Button>
@@ -166,6 +212,32 @@ export default function Challenge() {
             <p className="mt-6 font-mono text-sm font-bold uppercase tracking-[0.1em] text-amber-text">
               Time is up — send it
             </p>
+          )}
+
+          {phase === "preparing" && (
+            <fieldset className="mt-8">
+              <legend className="font-mono text-sm font-bold uppercase tracking-[0.1em] text-muted">
+                Rather talk about something else?
+              </legend>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {SUBJECTS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={subject === option.value}
+                    disabled={starting}
+                    onClick={() => chooseSubject(option.value)}
+                    className={`${CHIP} ${
+                      subject === option.value
+                        ? "bg-fg text-bg hard-shadow"
+                        : "bg-surface hover:text-signal-text"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
           )}
 
           {phase === "preparing" && (
@@ -205,6 +277,11 @@ export default function Challenge() {
                   className="px-8 py-4 text-base"
                 >
                   {starting ? "Waiting for the microphone" : "Start speaking"}
+                </Button>
+                {/* Visible, one click, no confirmation: turning a topic down is
+                    an ordinary move, not a failure. */}
+                <Button variant="outline" onClick={skipTopic} disabled={starting}>
+                  Skip →
                 </Button>
                 <Button variant="ghost" onClick={() => navigate("/dashboard")}>
                   Not now

@@ -218,11 +218,12 @@ Every route requires a Supabase session token except `GET /api/health`.
 | --- | --- | --- |
 | `GET` | `/api/health` | Liveness. The only unauthenticated route. |
 | `GET` | `/api/auth/me` | The signed-in user. |
-| `POST` | `/api/challenges/start` | Return the live challenge, or assign one. |
+| `POST` | `/api/challenges/start` | Return the live challenge, or assign one. `?category=` picks the subject. |
 | `GET` | `/api/challenges/current` | The live challenge, or `null`. |
 | `POST` | `/api/challenges/:id/submit` | `multipart/form-data` with `audio`. |
 | `POST` | `/api/challenges/:id/retry` | Keep the topic, clear the failure. |
-| `POST` | `/api/challenges/:id/skip` | Abandon the topic. |
+| `POST` | `/api/challenges/:id/started` | Record that the microphone was opened. |
+| `POST` | `/api/challenges/:id/skip` | Abandon the topic; no attempt, no score, no streak. |
 | `GET` | `/api/history` · `/api/history/:id` | Attempts, newest first. |
 | `GET` | `/api/progress` | Totals, streaks and per-dimension trends. |
 | `GET` `PATCH` `DELETE` | `/api/profile` | Read, rename, or delete the account. |

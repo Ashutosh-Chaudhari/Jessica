@@ -12,6 +12,16 @@ export type SourceType = "generated" | "cached_news" | "fresh_web";
 /**
  * Challenge lifecycle (spec section 28):
  * NEW -> ASSIGNED -> PREPARING -> RECORDING -> PROCESSING -> PASSED/FAILED -> COMPLETED/RETRY
+ *
+ * The four states the product talks about map onto this enum plus one
+ * timestamp, so there is nothing extra to keep in step:
+ *   shown     - 'assigned', the topic is on screen and untouched
+ *   started   - user_challenges.started_at is set; the mic was opened
+ *   completed - 'passed' or 'failed'; an attempt row exists either way
+ *   skipped   - 'skipped'; no attempt row, so it reaches no score or streak
+ *
+ * 'processing' is reserved and currently never written - see the note in
+ * apps/worker/src/services/pipeline.ts for why submit does not set it.
  */
 export type UserChallengeStatus =
   | "assigned"
