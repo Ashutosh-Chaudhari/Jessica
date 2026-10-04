@@ -39,7 +39,7 @@ export default function Signup() {
         </p>
         <Link
           to="/login"
-          className="mt-6 inline-block font-mono text-sm font-bold uppercase tracking-[0.1em] underline decoration-2 underline-offset-4 hover:text-signal-text"
+          className="mt-8 inline-block font-mono text-sm font-bold uppercase tracking-[0.12em] underline decoration-signal decoration-2 underline-offset-[6px] hover:text-signal-text"
         >
           Go to log in
         </Link>
@@ -90,9 +90,9 @@ export default function Signup() {
 
       <PrivacyNote className="mt-6" />
 
-      <p className="mt-6 border-t-2 rule pt-5 font-mono text-sm uppercase tracking-[0.1em] text-muted">
+      <p className="mt-8 border-t border-line pt-6 font-mono text-xs uppercase tracking-[0.12em] text-muted">
         Already have one?{" "}
-        <Link to="/login" className="text-fg underline decoration-2 underline-offset-4 hover:text-signal-text">
+        <Link to="/login" className="font-semibold text-fg underline decoration-signal decoration-2 underline-offset-[6px] hover:text-signal-text">
           Log in
         </Link>
       </p>

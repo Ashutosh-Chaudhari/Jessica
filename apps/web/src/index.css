@@ -1,44 +1,55 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Jessica - broadcast-studio brutalism.
+   Jessica - an editorial communication studio.
 
-   The product is speaking with no script and a running clock. The interface is
-   built the same way: exposed structure, hard rules, nothing soft to hide
-   behind. Colour comes from studio equipment rather than decoration - ON AIR
-   red, cue blue, VU amber - and red is spent ONLY on "you are live", so it
-   still means something when it appears.
+   Ink, bone and one electric blue. The page is built like a printed run-sheet:
+   type does the structuring, hairlines divide, and full-strength rules are
+   kept for the breaks that matter. Boxes are rare, so the few that exist - the
+   next challenge, the score, the record control - read as the point of the
+   screen. Red is spent ONLY on "you are recording", amber only on retry and
+   attention, so each still means something when it appears.
 
    Readability outranks the aesthetic here:
-   - Every text colour is solved for >= 7:1 (WCAG AAA), not 4.5:1. AA is a
-     floor for compliance, not a standard for reading without effort.
-   - Prose is set in a sans face. Mono is reserved for genuine machine readout
-     - numbers, timecode, short labels - because monospace at paragraph length
-     is tiring no matter how good the contrast is.
-   - Nothing is smaller than 12px, and wide letter-spacing appears only at
-     label sizes, never on anything you actually read.
+   - Every text colour is solved for >= 7:1 (WCAG AAA) on both the page and the
+     raised surface. `faint` is the one exception at >= 4.8:1, and it is kept
+     for captions nobody needs in order to use the app.
+   - Hairlines (14%) are structure, not boundaries. Anything you can operate -
+     inputs, toggles, outlined buttons - gets `control`, which clears 3:1.
+   - Prose is set in a sans face. Mono is for genuine machine readout: labels,
+     timecode, counts. Nothing is smaller than 12px.
 
    Fill colours and text colours are separate tokens on purpose. A saturated
-   ON AIR red is right for a lamp and wrong for a sentence; making one value do
-   both jobs is exactly what produces unreadable accent text.
+   blue is right for a block and wrong for a sentence; making one value do both
+   jobs is exactly what produces unreadable accent text.
 --------------------------------------------------------------------------- */
 
 @theme {
-  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Epilogue", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-raised: var(--raised);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-rule: var(--rule);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-control: var(--control);
 
   /* Fills: saturated, always sit behind something else. */
   --color-signal: var(--signal);
   --color-signal-fg: var(--signal-fg);
+  /* Blue as large type: scores, stat figures, step numbers. */
+  --color-signal-ink: var(--signal-ink);
   --color-live: var(--live);
   --color-live-fg: var(--live-fg);
+  /* Amber is retry and attention - never a score, never "live". */
+  --color-amber: var(--amber);
+  --color-amber-fg: var(--amber-fg);
 
   /* The same hues solved for AAA, for when they ARE the text. */
   --color-signal-text: var(--signal-text);
@@ -46,47 +57,65 @@
   --color-amber-text: var(--amber-text);
 }
 
-/* Light: paper. A studio label, not a linen background. */
+/* Light: ink on bone - the brand off-white as the page itself. */
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #e6e4de;
-  --surface: #f4f3ef;
-  --fg: #0b0b0c; /* 15.5:1 */
-  --muted: #4c4945; /* 7.0:1 */
-  --rule: #0b0b0c;
+  --bg: #f0f0eb;
+  --surface: #fafaf7;
+  --raised: #e6e6e0;
+  --fg: #0b0b0d; /* 17.2:1 */
+  --muted: #4f4f4a; /* 7.2:1 */
+  --faint: #66665f; /* 5.1:1 - captions only */
+  --rule: #0b0b0d;
+  --line: color-mix(in srgb, #0b0b0d 14%, transparent);
+  --line-strong: color-mix(in srgb, #0b0b0d 32%, transparent);
+  --control: color-mix(in srgb, #0b0b0d 62%, transparent); /* >= 3:1 */
 
-  --signal: #1e34e6;
-  --signal-fg: #ffffff;
-  --signal-text: #1b2fcf; /* 7.0:1 */
+  --signal: #6878ff;
+  --signal-fg: #0b0b0d; /* 5.4:1 */
+  --signal-text: #2a35c9; /* 7.5:1 */
+  --signal-ink: #3644e0; /* 6.0:1 - big blue numerals */
 
-  --live: #c51d08;
-  --live-fg: #ffffff;
-  --live-text: #931606; /* 7.0:1 */
+  --live: #c8250c;
+  --live-fg: #ffffff; /* 5.6:1 */
+  --live-text: #931606; /* 7.8:1 */
 
-  --amber-text: #654200; /* 7.1:1 */
-  --shadow-hard: 6px 6px 0 var(--rule);
+  --amber: #e9a13b;
+  --amber-fg: #0b0b0d; /* 9.0:1 */
+  --amber-text: #6b4500; /* 7.4:1 */
+
 }
 
-/* Dark: ink. */
+/* Dark: the studio with the lights down. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0b0b0c;
-  --surface: #141416;
-  --fg: #e6e4de; /* 15.5:1 */
-  --muted: #a8a49e; /* 7.2:1 against the lighter surface */
-  --rule: #e6e4de;
+  --bg: #0b0b0d;
+  --surface: #151519;
+  --raised: #1d1d22;
+  --fg: #f0f0eb; /* 17.2:1 */
+  --muted: #a9a9a3; /* 7.7:1 against the raised surface */
+  --faint: #8a8a84; /* 5.3:1 - captions only */
+  --rule: #f0f0eb;
+  --line: color-mix(in srgb, #f0f0eb 14%, transparent);
+  --line-strong: color-mix(in srgb, #f0f0eb 32%, transparent);
+  --control: color-mix(in srgb, #f0f0eb 55%, transparent); /* >= 3:1 */
 
-  --signal: #5f74ff;
-  --signal-fg: #06060a;
-  --signal-text: #8998ff; /* 7.0:1 */
+  /* The fill is the brand blue at 5.4:1 - right for blocks, bars and big
+     numerals. Small text gets the lifted variant. */
+  --signal: #6878ff;
+  --signal-fg: #0b0b0d;
+  --signal-text: #8d9aff; /* 7.1:1 */
+  --signal-ink: #6878ff; /* 5.4:1 - big blue numerals */
 
-  --live: #ff2d16;
-  --live-fg: #06060a;
-  --live-text: #ff7f71; /* 7.2:1 */
+  --live: #ff3b24;
+  --live-fg: #0b0b0d; /* 5.5:1 */
+  --live-text: #ff8577; /* 7.7:1 */
 
-  --amber-text: #ffb800; /* 10.6:1 */
-  --shadow-hard: 6px 6px 0 var(--rule);
+  --amber: #f0b65a;
+  --amber-fg: #0b0b0d; /* 10.8:1 */
+  --amber-text: #f0b65a; /* 10:1 */
+
 }
 
 html {
@@ -101,6 +130,7 @@ body {
   font-size: 1rem;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
@@ -109,34 +139,107 @@ body {
 }
 
 /* Brutalism keeps the focus ring visible and blunt rather than hiding it. */
-:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--signal);
-  outline-offset: 2px;
+  outline-offset: 3px;
+}
+
+/* Stats on a ruled grid: two across on a phone, one row on a desk. Plain CSS
+   on purpose - each divider depends on the cell's position at every
+   breakpoint, and utility variants cannot promise the order these resolve in.
+   Every override repeats the :nth-child weight so the later rule wins. */
+@layer components {
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid var(--rule);
+  }
+  .stat-grid > :nth-child(n) {
+    border-bottom: 1px solid var(--line);
+    padding-right: 1rem;
+  }
+  .stat-grid > :nth-child(2n) {
+    border-left: 1px solid var(--line);
+    padding-left: 1rem;
+  }
+  .stat-grid > :last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
+
+  @media (min-width: 40rem) {
+    .stat-grid--3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .stat-grid--3 > :nth-child(n) {
+      border-left: 1px solid var(--line);
+      padding-left: 1.25rem;
+    }
+    .stat-grid--3 > :nth-child(3n + 1) {
+      border-left: 0;
+      padding-left: 0;
+    }
+    .stat-grid--3 > :last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .stat-grid--5 {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .stat-grid--5 > :nth-child(n) {
+      border-left: 1px solid var(--line);
+      padding-left: 1.25rem;
+    }
+    .stat-grid--5 > :nth-child(1) {
+      border-left: 0;
+      padding-left: 0;
+    }
+    .stat-grid--5 > :last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+  }
 }
 
 @layer utilities {
-  .rule {
-    border-color: var(--rule);
-  }
-
   /* Section label. 12px is the floor, and the tracking stays loose enough to
      read as a label without breaking the word into separate letters. */
   .eyebrow {
     font-family: var(--font-mono);
     font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    font-weight: 600;
+    letter-spacing: 0.14em;
     line-height: 1.4;
     text-transform: uppercase;
     color: var(--muted);
   }
 
+  /* Titles that are a word or two: set big, tight and in capitals. */
   .display {
     font-family: var(--font-display);
-    font-weight: 900;
-    letter-spacing: -0.04em;
-    line-height: 0.88;
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 0.9;
     text-transform: uppercase;
+  }
+
+  /* Sentences that have to be read, not just seen: challenge questions and
+     topic titles. Sentence case, tight but never crowded. */
+  .headline {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+    text-wrap: balance;
+  }
+
+  /* Big standalone numbers. Proportional figures on purpose - equal-width
+     digits look loose at display sizes. */
+  .numeral {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    line-height: 0.85;
   }
 
   /* Long-form: transcripts, feedback, explanations. */
@@ -153,11 +256,17 @@ body {
     font-weight: 600;
   }
 
-  .hard-shadow {
-    box-shadow: var(--shadow-hard);
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 
-  /* Scene + plane: a surface receding from the reader. */
+  /* The one offset detail: a block that sits on an electric-blue plate. Used
+     where a screen has a single thing that matters most. */
+  .offset-signal {
+    box-shadow: 10px 10px 0 var(--signal);
+  }
+
+  /* Scene + plane: a surface receding from the reader (landing clock). */
   .scene {
     perspective: 900px;
     perspective-origin: 50% 30%;
@@ -167,18 +276,112 @@ body {
     transform-style: preserve-3d;
   }
 
-  .lift {
-    transition:
-      transform 160ms ease-out,
-      box-shadow 160ms ease-out;
+  /* Motion answers an action: arriving on a page, opening a row, getting a
+     score. Only the loading scan, the processing sweep and the record
+     indicator loop, because each of them means "this is still happening". */
+  .page-in {
+    animation: page-in 240ms ease-out both;
   }
-  .lift:hover {
-    transform: translate3d(-3px, -3px, 0);
-    box-shadow: 9px 9px 0 var(--rule);
+  .reveal {
+    animation: reveal 220ms ease-out both;
+  }
+  .score-in {
+    animation: score-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .grow-in {
+    transform-origin: left center;
+    animation: grow-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
-  .tabular {
-    font-variant-numeric: tabular-nums;
+  /* Indeterminate progress: a block crossing a ruled track. It says "working"
+     without pretending to know how far along the work is. */
+  .scan {
+    position: relative;
+    height: 4px;
+    overflow: hidden;
+    background: var(--line);
+  }
+  .scan::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 28%;
+    background: var(--signal);
+    animation: scan 1.4s ease-in-out infinite;
+  }
+
+  /* Processing list: a highlight that walks the rows and starts over. It
+     never ticks anything off, because nothing here knows which check is done. */
+  .sweep > * {
+    animation: sweep 2.8s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.4s);
+  }
+
+  /* Recording indicator: a steady, regular pulse. It is deliberately not
+     shaped like a voice - it shows the take is running, not how loud you are. */
+  .pulse-bars > span {
+    transform-origin: center;
+    animation: pulse-bar 1.2s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * -0.09s);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+/* The clip ends well outside the box: display numerals overshoot their tight
+   line-height, and an inset(0) end state would shave the tops off round digits. */
+@keyframes score-in {
+  from {
+    opacity: 0;
+    transform: translateY(16%);
+    clip-path: inset(-30% -10% 100% -10%);
+  }
+  to {
+    clip-path: inset(-30% -10% -30% -10%);
+  }
+}
+@keyframes grow-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(360%);
+  }
+}
+@keyframes sweep {
+  0%,
+  30%,
+  100% {
+    color: var(--muted);
+    border-left-color: transparent;
+  }
+  10%,
+  20% {
+    color: var(--fg);
+    border-left-color: var(--signal);
+  }
+}
+@keyframes pulse-bar {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
   }
 }
 
@@ -192,5 +395,16 @@ body {
   }
   .plane {
     transform: none;
+  }
+  /* A frozen scan block would sit off-track and vanish; show a still bar. */
+  .scan::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.35;
+  }
+  /* Still bars at mixed heights: the lamp and the word carry the state. */
+  .pulse-bars > span {
+    animation: none;
+    transform: scaleY(calc(0.35 + 0.65 * var(--h, 0.5)));
   }
 }

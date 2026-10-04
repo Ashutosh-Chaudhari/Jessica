@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
 import { Link } from "react-router";
-import { Button, Eyebrow, Notice, QuoteBlock } from "../components/primitives";
+import { Arrow, Button, Eyebrow, Notice, QuoteBlock } from "../components/primitives";
 import { ThemeCycle } from "../components/ThemeToggle";
 
 export function AuthShell({
@@ -16,26 +16,26 @@ export function AuthShell({
 }) {
   return (
     <div className="min-h-screen">
-      <header className="border-b-2 rule">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/">
-            <span className="display block text-xl leading-none">Jessica</span>
-            <Eyebrow>The Communicator</Eyebrow>
+      <header className="border-b border-line">
+        <div className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8 lg:px-14">
+          <Link to="/" className="block">
+            <span className="display block text-[1.6rem] leading-[0.85]">Jessica</span>
+            <Eyebrow className="mt-1.5">The Communicator</Eyebrow>
           </Link>
-          <ThemeCycle />
+          <ThemeCycle compact />
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-10 px-4 py-12 lg:grid-cols-2 lg:gap-16">
-        <div>
-          <h1 className="display text-5xl sm:text-6xl">{title}</h1>
-          {intro && (
-            <p className="mt-5 max-w-sm prose-body text-muted">{intro}</p>
-          )}
-          <QuoteBlock seed={seed} className="mt-10 hidden lg:block" />
+      <main className="mx-auto grid max-w-6xl gap-12 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-16 lg:px-14 lg:py-20">
+        <div className="min-w-0">
+          <h1 className="display text-[clamp(2.75rem,6.5vw,5.5rem)]">{title}</h1>
+          {intro && <p className="mt-6 max-w-md text-lg leading-relaxed text-muted">{intro}</p>}
+          <QuoteBlock seed={seed} className="mt-14 hidden lg:grid" />
         </div>
 
-        <div className="border-2 rule bg-surface p-6 hard-shadow sm:p-8">{children}</div>
+        <div className="self-start border border-t-4 border-line-strong border-t-signal bg-surface p-6 sm:p-9">
+          {children}
+        </div>
       </main>
     </div>
   );
@@ -48,8 +48,8 @@ export function ErrorNote({ message }: { message: string | null }) {
 
 export function SubmitButton({ busy, label }: { busy: boolean; label: string }) {
   return (
-    <Button type="submit" disabled={busy} className="w-full py-4">
-      {busy ? "Working…" : label}
+    <Button type="submit" size="lg" busy={busy} className="w-full">
+      {busy ? "Working" : label} {!busy && <Arrow />}
     </Button>
   );
 }

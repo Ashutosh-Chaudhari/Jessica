@@ -5,9 +5,20 @@ import type { DurationOption } from "@jessica/types";
 import { CATEGORY_LABELS, DURATION_OPTIONS, MAX_RECORDING_SECONDS } from "@jessica/types";
 import { api } from "../services";
 import { Layout } from "../components/Layout";
-import { Button, Eyebrow, Notice, QuoteBlock, Slab } from "../components/primitives";
-import { Clock, LiveLamp } from "../components/Clock";
+import { Arrow, Button, Eyebrow, Notice, QuoteBlock, StatePanel } from "../components/primitives";
+import { LiveLamp } from "../components/Clock";
+import {
+  ActivityBars,
+  ElapsedTrack,
+  FinishButton,
+  MetaLine,
+  MicButton,
+  ProcessingChecklist,
+  Question,
+  RecordingTimer,
+} from "../components/practice";
 import { useRecorder } from "../hooks/useRecorder";
+import { formatClock } from "../hooks/format";
 
 type Phase = "generating" | "loadFailed" | "preparing" | "recording" | "processing" | "submitFailed";
 
@@ -23,7 +34,30 @@ const SUBJECTS: { value: Subject; label: string }[] = [
 ];
 
 const CHIP =
-  "border-2 rule px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.1em] disabled:cursor-not-allowed disabled:opacity-40";
+  "h-11 cursor-pointer border px-3.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] transition-colors disabled:cursor-not-allowed disabled:opacity-40";
+
+/**
+ * Every way the microphone can refuse, each with what to do about it. The
+ * recorder reports any failure to open the microphone as "denied" - refused,
+ * missing or busy look the same to it - so that text covers all three.
+ */
+const MIC_ERRORS: Record<"denied" | "unsupported" | "unknown", { title: string; body: string[] }> = {
+  denied: {
+    title: "Microphone access required",
+    body: [
+      "Microphone access is required to record your communication practice. Nothing is recorded until you press Start speaking.",
+      "If you blocked it, allow it from the icon in your browser's address bar. If it is allowed, check that a microphone is connected and not in use by another app.",
+    ],
+  },
+  unsupported: {
+    title: "This browser cannot record",
+    body: ["Audio recording is not available here. Try a current version of Chrome, Edge, Firefox or Safari."],
+  },
+  unknown: {
+    title: "Recording could not start",
+    body: ["The microphone opened but the recording did not start. Try again, or try a current version of Chrome, Edge, Firefox or Safari."],
+  },
+};
 
 export default function Challenge() {
   const navigate = useNavigate();
@@ -160,196 +194,288 @@ export default function Challenge() {
     setPhase("preparing");
   }, [recorder]);
 
-  const remaining = choice.seconds - recorder.elapsedSeconds;
+  // Display only: "Challenge 11" is the next topic you would complete. If the
+  // count cannot be read the heading simply goes without a number.
+  const [completed, setCompleted] = useState<number | null>(null);
+  useEffect(() => {
+    void api.progress
+      .getStats()
+      .then((s) => setCompleted(s.completed_topics))
+      .catch(() => {});
+  }, []);
+
   const live = phase === "recording";
+  const number = completed === null ? "" : ` ${String(completed + 1).padStart(2, "0")}`;
 
   return (
-    <Layout>
+    <Layout focus={live || phase === "processing"}>
       {phase === "generating" && (
-        <Slab className="p-12">
+        <section role="status" className="py-4">
           <Eyebrow>Finding you a topic</Eyebrow>
-          <p className="display mt-4 text-3xl">Stand by</p>
-          <p className="mt-3 prose-body text-muted">
+          <p className="display mt-5 text-[clamp(3rem,9vw,6.75rem)]">Stand by</p>
+          <p className="mt-5 max-w-md prose-body text-muted">
             Checking for something you have not been given before.
           </p>
-        </Slab>
+          <div className="scan mt-10 max-w-md" />
+        </section>
       )}
 
       {phase === "loadFailed" && (
-        <Slab className="p-10">
-          <Eyebrow>Could not start</Eyebrow>
-          <p className="mt-4 font-sans text-base">{loadError}</p>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Button onClick={() => void loadChallenge(subject)}>Try again</Button>
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-              Back to dashboard
-            </Button>
-          </div>
-        </Slab>
+        <StatePanel
+          tone="error"
+          label="Could not start"
+          title="No topic yet"
+          actions={
+            <>
+              <Button onClick={() => void loadChallenge(subject)}>
+                Try again <Arrow />
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                Back to dashboard
+              </Button>
+            </>
+          }
+        >
+          <p>{loadError}</p>
+        </StatePanel>
       )}
 
-      {(phase === "preparing" || live) && challenge && (
+      {phase === "preparing" && challenge && (
         <>
-          <div className="border-b-2 rule pb-6">
-            <div className="flex items-center justify-between gap-4">
-              <Eyebrow>Your topic</Eyebrow>
-              <LiveLamp live={recorder.recording} />
-            </div>
-            <h1 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
-              {challenge.topic_text}
-            </h1>
-          </div>
-
-          <div className="scene mt-10">
-            <div className="plane origin-left">
-              <div className="inline-block border-2 rule bg-surface px-6 py-3 hard-shadow">
-                <Clock seconds={live ? Math.max(0, remaining) : choice.seconds} live={recorder.recording} />
+          <header className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="display text-[clamp(1.75rem,3.4vw,2.5rem)]">
+                Challenge<span className="text-signal-ink">{number}</span>
+              </p>
+              <div className="mt-3">
+                <MetaLine items={[CATEGORY_LABELS[challenge.category], `Up to ${formatClock(choice.seconds)}`]} />
               </div>
             </div>
+            <LiveLamp live={recorder.recording} />
+          </header>
+
+          <div className="mt-8 border-t-2 border-rule pt-8 sm:mt-10 sm:pt-12 md:pl-[0.6em]">
+            <Question>{challenge.topic_text}</Question>
           </div>
 
-          {live && !recorder.recording && (
-            <p className="mt-6 font-mono text-sm font-bold uppercase tracking-[0.1em] text-amber-text">
-              Time is up — send it
-            </p>
-          )}
-
-          {phase === "preparing" && (
-            <fieldset className="mt-8">
-              <legend className="font-mono text-sm font-bold uppercase tracking-[0.1em] text-muted">
-                Rather talk about something else?
-              </legend>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {SUBJECTS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    aria-pressed={subject === option.value}
-                    disabled={starting}
-                    onClick={() => chooseSubject(option.value)}
-                    className={`${CHIP} ${
-                      subject === option.value
-                        ? "bg-fg text-bg hard-shadow"
-                        : "bg-surface hover:text-signal-text"
-                    }`}
+          <div className="mt-10 grid gap-10 border-t border-rule pt-8 sm:mt-14 lg:grid-cols-[minmax(0,1fr)_27rem] lg:gap-14 lg:pt-10">
+            <div className="min-w-0">
+              <Eyebrow>How to answer</Eyebrow>
+              <p className="headline mt-4 text-2xl sm:text-3xl">Speak naturally.</p>
+              <p className="mt-3 max-w-md text-lg leading-relaxed text-muted">
+                Structure your response with a clear point, explanation and example, then close
+                it off.
+              </p>
+              {/* The same shape the report suggests, and what "structure" is scored on. */}
+              <ol className="mt-6 flex flex-wrap gap-2" aria-label="A simple shape for your answer">
+                {["Point", "Explanation", "Example", "Close"].map((step, i) => (
+                  <li
+                    key={step}
+                    className="inline-flex h-9 items-center gap-2.5 border border-line-strong px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em]"
                   >
-                    {option.label}
-                  </button>
+                    <span className="text-signal-text">{String(i + 1).padStart(2, "0")}</span>
+                    {step}
+                  </li>
                 ))}
-              </div>
-            </fieldset>
-          )}
+              </ol>
 
-          {phase === "preparing" && (
-            <fieldset className="mt-8">
-              <legend className="font-mono text-sm font-bold uppercase tracking-[0.1em] text-muted">
-                How long do you want?
-              </legend>
-              <div className="mt-3 flex flex-wrap gap-3">
-                {DURATION_OPTIONS.filter((o) => o.seconds <= challenge.max_duration_seconds).map(
-                  (option) => (
+              <fieldset className="mt-12">
+                <legend className="eyebrow text-fg">Rather talk about something else?</legend>
+                <p className="mt-2 font-mono text-xs text-faint">Picking a subject swaps this topic for a new one.</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {SUBJECTS.map((option) => (
                     <button
-                      key={option.seconds}
+                      key={option.value}
                       type="button"
-                      aria-pressed={choice.seconds === option.seconds}
+                      aria-pressed={subject === option.value}
                       disabled={starting}
-                      onClick={() => setChoice(option)}
-                      className={`border-2 rule px-5 py-2 font-mono text-sm font-bold uppercase tracking-[0.1em] disabled:cursor-not-allowed disabled:opacity-40 ${
-                        choice.seconds === option.seconds
-                          ? "bg-fg text-bg hard-shadow"
-                          : "bg-surface hover:text-signal-text"
+                      onClick={() => chooseSubject(option.value)}
+                      className={`${CHIP} ${
+                        subject === option.value
+                          ? "border-fg bg-fg text-bg"
+                          : "border-control text-muted hover:border-fg hover:text-fg"
                       }`}
                     >
                       {option.label}
                     </button>
-                  ),
-                )}
-              </div>
-            </fieldset>
-          )}
+                  ))}
+                </div>
+              </fieldset>
+            </div>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4 border-t-2 rule pt-8">
-            {phase === "preparing" ? (
-              <>
-                <Button
-                  onClick={() => void startSpeaking()}
-                  disabled={starting}
-                  className="px-8 py-4 text-base"
-                >
-                  {starting ? "Waiting for the microphone" : "Start speaking"}
-                </Button>
+            <section aria-labelledby="get-ready" className="min-w-0 self-start border border-line-strong bg-surface p-5 sm:p-8">
+              <Eyebrow>Before recording</Eyebrow>
+              <h2 id="get-ready" className="display mt-3 text-[2.5rem]">
+                Get ready
+              </h2>
+              <p className="mt-3 prose-body text-muted">
+                Find somewhere you can speak out loud. Your browser may ask for microphone access
+                when you press Start speaking.
+              </p>
+
+              <fieldset className="mt-7">
+                <legend className="eyebrow text-fg">How long do you want?</legend>
+                <div className="mt-3 grid grid-flow-col border border-control">
+                  {DURATION_OPTIONS.filter((o) => o.seconds <= challenge.max_duration_seconds).map(
+                    (option, i) => (
+                      <button
+                        key={option.seconds}
+                        type="button"
+                        aria-pressed={choice.seconds === option.seconds}
+                        disabled={starting}
+                        onClick={() => setChoice(option)}
+                        className={`h-12 cursor-pointer font-mono text-sm font-semibold uppercase tracking-[0.1em] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          i > 0 ? "border-l border-control" : ""
+                        } ${
+                          choice.seconds === option.seconds
+                            ? "bg-signal text-signal-fg"
+                            : "text-muted hover:bg-raised hover:text-fg"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </fieldset>
+
+              {submitError && (
+                <div className="mt-6">
+                  <Notice>{submitError}</Notice>
+                </div>
+              )}
+
+              <div className="mt-7">
+                <MicButton onClick={() => void startSpeaking()} starting={starting} />
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
                 {/* Visible, one click, no confirmation: turning a topic down is
                     an ordinary move, not a failure. */}
                 <Button variant="outline" onClick={skipTopic} disabled={starting}>
-                  Skip →
+                  Skip topic <Arrow />
                 </Button>
                 <Button variant="ghost" onClick={() => navigate("/dashboard")}>
                   Not now
                 </Button>
-              </>
-            ) : (
-              <Button variant="outline" onClick={() => void finishSpeaking()} className="px-8 py-4 text-base">
-                Finish
-              </Button>
-            )}
-          </div>
+              </div>
 
-          {phase === "preparing" && (
-            <div className="mt-8 grid gap-6 border-t-2 rule pt-6 sm:grid-cols-2">
-              <p className="prose-body text-muted">
+              <p className="mt-6 border-t border-line pt-4 font-mono text-xs leading-relaxed text-muted">
                 Speak for at least {choice.rules.min_duration_seconds} seconds and up to{" "}
                 {choice.label}. The clock stops itself at the limit.
               </p>
-              <p className="prose-body text-muted">
-                Your voice goes to a cloud speech service for transcription, and the transcript
-                to an AI service for scoring. The audio is not kept.
-              </p>
-            </div>
-          )}
+            </section>
+          </div>
         </>
       )}
 
+      {live && challenge && (
+        <section aria-label="Recording">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-live pb-5">
+            <LiveLamp live={recorder.recording} />
+            <MetaLine
+              items={[`Challenge${number}`, CATEGORY_LABELS[challenge.category], `Up to ${formatClock(choice.seconds)}`]}
+            />
+          </div>
+
+          <div className="mt-8 md:pl-[0.6em]">
+            <Question size="md">{challenge.topic_text}</Question>
+          </div>
+
+          <div className="mt-10 sm:mt-12">
+            <RecordingTimer
+              elapsed={recorder.elapsedSeconds}
+              total={choice.seconds}
+              live={recorder.recording}
+            />
+          </div>
+
+          <div className="mt-8">
+            <ActivityBars running={recorder.recording} />
+          </div>
+
+          <div className="mt-8">
+            <ElapsedTrack
+              elapsed={recorder.elapsedSeconds}
+              total={choice.seconds}
+              minimum={choice.rules.min_duration_seconds}
+            />
+          </div>
+
+          {!recorder.recording && (
+            <p role="alert" className="mt-6 font-mono text-sm font-bold uppercase tracking-[0.12em] text-amber-text">
+              Time is up — send it
+            </p>
+          )}
+
+          <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-rule pt-8">
+            <FinishButton onClick={() => void finishSpeaking()} timeUp={!recorder.recording} />
+            <p className="max-w-xs font-mono text-xs leading-relaxed text-faint">
+              Your transcript and scores appear in the report once you finish.
+            </p>
+          </div>
+        </section>
+      )}
+
       {phase === "processing" && (
-        <Slab className="p-12">
-          <Eyebrow>Listening</Eyebrow>
-          <p className="display mt-4 text-3xl">Working it out</p>
-          <p className="mt-3 prose-body text-muted">
+        <section role="status" aria-label="Analysing your response" className="py-4">
+          <Eyebrow>Analysing your response</Eyebrow>
+          <p className="display mt-5 text-[clamp(3rem,9vw,6.75rem)]">Working it out</p>
+          <p className="mt-5 max-w-md prose-body text-muted">
             Transcribing what you said, then scoring how it came across.
           </p>
-        </Slab>
+          <div className="scan mt-10 max-w-xl" />
+          <p className="eyebrow mt-14">What is being checked</p>
+          <div className="mt-4">
+            <ProcessingChecklist />
+          </div>
+        </section>
       )}
 
       {phase === "submitFailed" && (
-        <Slab className="p-10">
-          <Eyebrow>Not sent</Eyebrow>
-          <p className="mt-4 font-sans text-base">{submitError}</p>
-          <p className="mt-2 font-mono text-xs text-muted">Your recording is still here.</p>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Button onClick={() => void send()}>Send it again</Button>
-            <Button variant="ghost" onClick={rerecord}>
-              Record a new answer
-            </Button>
-          </div>
-        </Slab>
+        <StatePanel
+          tone="error"
+          label="Not sent"
+          title="Your answer did not send"
+          actions={
+            <>
+              <Button onClick={() => void send()}>
+                Send it again <Arrow />
+              </Button>
+              <Button variant="ghost" onClick={rerecord}>
+                Record a new answer
+              </Button>
+            </>
+          }
+        >
+          <p>{submitError}</p>
+          <p className="font-mono text-xs">Your recording is still here.</p>
+        </StatePanel>
       )}
 
       {recorder.error && phase !== "processing" && (
-        <div className="mt-6">
-          <Notice>
-            {recorder.error === "denied"
-              ? "Microphone access was denied. Allow it in your browser, then try again."
-              : "Audio recording is not available in this browser."}
-          </Notice>
-          <Button variant="outline" className="mt-4" onClick={() => void startSpeaking()}>
-            Try again
-          </Button>
-        </div>
+        <StatePanel
+          tone="error"
+          className="mt-10"
+          label="Microphone"
+          title={MIC_ERRORS[recorder.error].title}
+          actions={
+            <Button onClick={() => void startSpeaking()}>
+              Try again <Arrow />
+            </Button>
+          }
+        >
+          {MIC_ERRORS[recorder.error].body.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </StatePanel>
       )}
 
-      {submitError && phase === "preparing" && (
-        <div className="mt-6">
-          <Notice>{submitError}</Notice>
-        </div>
+      {phase === "preparing" && (
+        <p className="mt-12 max-w-2xl border-t border-line pt-6 prose-body text-muted">
+          Your voice goes to a cloud speech service for transcription, and the transcript to an AI
+          service for scoring. The audio is not kept.
+        </p>
       )}
 
       {phase === "preparing" && <QuoteBlock seed={challenge?.topic_text.length ?? 1} className="mt-12" />}

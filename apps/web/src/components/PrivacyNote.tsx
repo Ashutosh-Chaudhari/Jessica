@@ -6,7 +6,7 @@
 export function PrivacyNote({ className = "" }: { className?: string }) {
   return (
     <p
-      className={`border-l-4 rule bg-bg px-3 py-2 font-mono text-xs leading-relaxed text-muted ${className}`}
+      className={`border-l-2 border-signal bg-bg px-4 py-3 font-mono text-xs leading-relaxed text-muted ${className}`}
     >
       Your voice is sent to a cloud speech service for transcription, and the transcript to an AI
       service for scoring. The audio is not kept.

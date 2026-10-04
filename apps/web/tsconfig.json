@@ -7,5 +7,7 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Run by `npm test` under node --test, which has its own types.
+  "exclude": ["src/**/*.test.ts"]
 }

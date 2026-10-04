@@ -6,8 +6,10 @@ const MODES: { value: ThemeMode; label: string }[] = [
   { value: "dark", label: "Dark" },
 ];
 
+const GLYPH: Record<ThemeMode, string> = { light: "○", system: "◐", dark: "●" };
+
 /** Header control: one target that cycles, because the header has no room for three. */
-export function ThemeCycle() {
+export function ThemeCycle({ compact = false }: { compact?: boolean }) {
   const { mode, setMode } = useTheme();
   const index = MODES.findIndex((m) => m.value === mode);
   const next = MODES[(index + 1) % MODES.length]!;
@@ -18,43 +20,55 @@ export function ThemeCycle() {
       // The label states what pressing it does, not what is currently set -
       // the visible text already says that.
       aria-label={`Switch appearance to ${next.label.toLowerCase()}`}
-      className="inline-flex cursor-pointer items-center gap-2 border-2 rule bg-surface px-3 py-1.5 font-mono text-sm font-bold uppercase tracking-[0.1em] transition-transform hover:-translate-y-[2px]"
+      className="inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 border border-control px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg transition-colors hover:border-fg hover:bg-fg hover:text-bg"
     >
-      <span aria-hidden="true">{mode === "light" ? "○" : mode === "dark" ? "●" : "◐"}</span>
-      {MODES[index]?.label ?? "Auto"}
+      <span aria-hidden="true" className="text-sm">
+        {GLYPH[mode]}
+      </span>
+      <span className={compact ? "max-sm:sr-only" : ""}>{MODES[index]?.label ?? "Auto"}</span>
     </button>
   );
 }
 
-/** Settings control: all three visible, because this is where you decide. */
+/**
+ * Settings control: all three visible, because this is where you decide.
+ * Native radios underneath, so arrow keys move between them for free.
+ */
 export function ThemeSegmented() {
   const { mode, setMode, resolved } = useTheme();
 
   return (
-    <div>
-      <div role="radiogroup" aria-label="Appearance" className="flex border-2 rule">
+    <fieldset>
+      <legend className="sr-only">Appearance</legend>
+      <div className="flex border border-control">
         {MODES.map((m, i) => {
           const active = mode === m.value;
           return (
-            <button
+            <label
               key={m.value}
-              role="radio"
-              aria-checked={active}
-              onClick={() => setMode(m.value)}
-              className={`flex-1 cursor-pointer px-4 py-3 font-mono text-sm font-bold uppercase tracking-[0.1em] ${
-                i > 0 ? "border-l-2 rule" : ""
-              } ${active ? "bg-signal text-signal-fg" : "bg-surface text-muted hover:text-fg"}`}
+              className={`relative flex h-14 flex-1 cursor-pointer items-center justify-center gap-2 font-mono text-sm font-semibold uppercase tracking-[0.12em] transition-colors has-[:focus-visible]:[outline:3px_solid_var(--signal)] has-[:focus-visible]:[outline-offset:3px] has-[:focus-visible]:z-10 ${
+                i > 0 ? "border-l border-control" : ""
+              } ${active ? "bg-signal text-signal-fg" : "text-muted hover:bg-raised hover:text-fg"}`}
             >
+              <input
+                type="radio"
+                name="appearance"
+                value={m.value}
+                checked={active}
+                onChange={() => setMode(m.value)}
+                className="sr-only"
+              />
+              <span aria-hidden="true">{GLYPH[m.value]}</span>
               {m.label}
-            </button>
+            </label>
           );
         })}
       </div>
-      <p className="mt-2 font-mono text-xs text-muted">
+      <p className="mt-3 font-mono text-xs text-muted">
         {mode === "system"
           ? `Following your device, which is currently ${resolved}.`
           : `Always ${mode}, on this browser.`}
       </p>
-    </div>
+    </fieldset>
   );
 }

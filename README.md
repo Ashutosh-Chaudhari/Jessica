@@ -22,15 +22,63 @@ you were actually understood.
 You cannot prepare for it. That is the point — the skill being trained is
 thinking and speaking under pressure, not rehearsing an answer.
 
-![The three steps of a challenge](docs/screenshots/challenge-flow.png)
-
 Topics are never repeated, and not just as strings: a new topic is embedded and
 compared against everything you have already passed, so you never get a
 paraphrase of a subject you have done. Pass or fail is decided by the backend,
 never by the model — the model measures, the application judges, against a bar
 that moves with the length you picked.
 
-![The dashboard, with stats and the start button](docs/screenshots/dashboard.png)
+## Inside the app
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard: the next challenge on an electric-blue plate, then stats"></td>
+    <td width="50%"><img src="docs/screenshots/practice.png" alt="Practice: the challenge question set large, with the Get ready panel"></td>
+  </tr>
+  <tr>
+    <td><strong>Dashboard</strong> — the next challenge comes first: the topic waiting for you, if there is one, and one button to start. Stats, recent sessions and a score trend sit underneath.</td>
+    <td><strong>Practice</strong> — the question, set large. Pick a subject or keep Jessica's choice, set the length, and start from one large microphone control.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/recording.png" alt="Recording: elapsed time over the limit, a red recording state and a Finish control"></td>
+    <td><img src="docs/screenshots/report.png" alt="Report: overall score, verdict and Improve next"></td>
+  </tr>
+  <tr>
+    <td><strong>Recording</strong> — navigation steps back to a quiet strip. Elapsed time against your limit, the minimum marked on the track, and red only while the microphone is live.</td>
+    <td><strong>Report</strong> — overall score, what to improve next, what already worked, the five scored dimensions, and the previous attempt at the same topic side by side.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/progress.png" alt="Progress: totals and trend sentences"></td>
+    <td><img src="docs/screenshots/history.png" alt="History: every session, one expanded to its transcript and scores"></td>
+  </tr>
+  <tr>
+    <td><strong>Progress</strong> — weekly score and speaking-time trends, a practice calendar, and each dimension's recent scores. The trend sentences only appear when the backend has enough sessions to back them.</td>
+    <td><strong>History</strong> — everything you have said, filterable by completed or retry. Each row opens to its transcript, notes and scores.</td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/mobile-dashboard-light.png" width="260" alt="The dashboard on a phone, in the light theme">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-recording.png" width="260" alt="Recording on a phone, full screen">
+</p>
+
+## Design
+
+An editorial communication studio: near-black and bone, one electric blue
+(`#6878FF`) for scores, progress and primary actions, amber for retry, and red
+spent only on "you are recording". Headings and scores are set in Epilogue,
+labels and timecode in IBM Plex Mono, and everything you read in IBM Plex Sans.
+Light, dark and auto, chosen per browser.
+
+- **Every number is real.** Nothing on screen is invented to fill a layout —
+  where there is not enough history yet, the screen says so.
+- **Readable first.** Text is solved for 7:1 contrast in both themes (small
+  captions for at least 4.5:1); keyboard focus is always visible; motion stops
+  for anyone who asks their system for reduced motion; the trend charts have a
+  table view.
+- **Light by construction.** No UI kit and no chart library — the charts are
+  plain SVG and HTML, and the design tokens live in one CSS file.
 
 ## Quick start
 
@@ -237,27 +285,37 @@ Provider errors never reach the client.
 <summary><strong>Project layout &amp; testing</strong></summary>
 
 ```
-apps/web/         React frontend — components, pages, hooks, services
-apps/worker/      Cloudflare Worker — middleware, routes, services, utils
-packages/types/   Shared domain types, constants and pure logic
-packages/ai/      Provider interfaces + Groq and Gemini implementations
-packages/database/  Supabase data access; all SQL behind functions
-supabase/migrations/  Schema, RLS policies, RPCs
-docs/SPEC.md      The original product and architecture specification
+apps/web/               React frontend
+  src/pages/            One file per screen: Landing, Login, Signup, Dashboard,
+                        Challenge (practice), Result (report), History, Progress, Profile
+  src/components/       Layout, primitives (buttons, stats, meters, states),
+                        practice, report, charts, attempt rows
+  src/hooks/            Auth, theme, recorder, and pure helpers over history
+  src/services/         The JessicaApi interface, with HTTP and mock implementations
+  src/index.css         Design tokens for both themes
+apps/worker/            Cloudflare Worker — middleware, routes, services, utils
+packages/types/         Shared domain types, constants and pure logic
+packages/ai/            Provider interfaces + Groq and Gemini implementations
+packages/database/      Supabase data access; all SQL behind functions
+supabase/migrations/    Schema, RLS policies, RPCs
+docs/SPEC.md            The original product and architecture specification
 ```
 
 The frontend talks to a `JessicaApi` interface with two implementations, HTTP
 and mock, so the UI never learns which backend it is using.
 
 ```bash
-npm test          # 39 tests, node --test, no framework
+npm test          # 57 tests, node --test, no framework
 npm run typecheck
 npm run build
 ```
 
 The suite covers the pure logic where correctness is easy to lose: pass/fail
 rules, streaks and trends, duplicate normalisation, the RSS parser, provider
-retry hints, the daily-budget boundary under concurrency, and notifications.
+retry hints, the daily-budget boundary under concurrency, notifications, and
+the frontend's history helpers — week bucketing, the previous-attempt
+comparison, and sorting feedback without ever filing a note under the wrong
+heading.
 
 </details>
 

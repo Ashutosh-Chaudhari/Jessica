@@ -19,14 +19,12 @@ export function Clock({
   scale?: "hero" | "page";
 }) {
   const size =
-    scale === "hero"
-      ? "text-[22vw] leading-[0.78] sm:text-[16vw] lg:text-[13rem]"
-      : "text-7xl sm:text-8xl";
+    scale === "hero" ? "text-[22vw] leading-[0.78] sm:text-[16vw] lg:text-[13rem]" : "text-7xl sm:text-8xl";
 
   return (
     <div className="relative inline-block">
       <span
-        className={`display tabular block ${size} ${live ? "text-live-text" : "text-fg"}`}
+        className={`numeral tabular block ${size} ${live ? "text-live-text" : "text-fg"}`}
         // Read as a whole value, not digit by digit, by a screen reader.
         aria-label={`${Math.floor(seconds / 60)} minutes ${seconds % 60} seconds remaining`}
         role="timer"
@@ -37,17 +35,21 @@ export function Clock({
   );
 }
 
-/** The ON AIR lamp. Red is spent only here, so it still means something. */
+/** The record lamp. Red is spent only here, so it still means something - and
+ *  the word changes too, so the state never rests on colour alone. */
 export function LiveLamp({ live }: { live: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2 border-2 rule bg-surface px-3 py-1.5">
+    <span
+      className={`inline-flex h-9 items-center gap-2.5 border px-3 ${
+        live ? "border-live bg-live text-live-fg" : "border-control text-muted"
+      }`}
+    >
       <span
-        className={`inline-block h-2.5 w-2.5 rounded-full ${
-          live ? "animate-pulse bg-live" : "bg-muted"
-        }`}
+        aria-hidden="true"
+        className={`inline-block h-2.5 w-2.5 rounded-full ${live ? "animate-pulse bg-live-fg" : "bg-faint"}`}
       />
-      <span className="font-mono text-sm font-bold uppercase tracking-[0.1em]">
-        {live ? "On air" : "Standby"}
+      <span className="font-mono text-xs font-bold uppercase tracking-[0.14em]">
+        {live ? "Recording" : "Standby"}
       </span>
     </span>
   );

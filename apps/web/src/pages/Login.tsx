@@ -54,9 +54,9 @@ export default function Login() {
         <SubmitButton busy={busy} label="Log in" />
       </form>
 
-      <p className="mt-6 border-t-2 rule pt-5 font-mono text-sm uppercase tracking-[0.1em] text-muted">
+      <p className="mt-8 border-t border-line pt-6 font-mono text-xs uppercase tracking-[0.12em] text-muted">
         No account yet?{" "}
-        <Link to="/signup" className="text-fg underline decoration-2 underline-offset-4 hover:text-signal-text">
+        <Link to="/signup" className="font-semibold text-fg underline decoration-signal decoration-2 underline-offset-[6px] hover:text-signal-text">
           Create one
         </Link>
       </p>
